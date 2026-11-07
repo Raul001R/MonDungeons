@@ -16,7 +16,7 @@ object MonDungeons : ModInitializer {
 
 		DungeonItems.register()
 		DungeonChestLoot.register()
-		LOGGER.info("MonDungeons stage one initialized")
+		LOGGER.info("MonDungeons stage two initialized: {} key tiers, {} reward tables", DungeonLootData.tiers.size, DungeonLootData.tables.size)
 	}
 
 	fun id(path: String): ResourceLocation

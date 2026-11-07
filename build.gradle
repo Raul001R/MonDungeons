@@ -57,6 +57,7 @@ tasks.withType(JavaExec).configureEach {
 }
 
 processResources {
+    from('dungeon-loot.json')
 	def version = project.version
 	inputs.property "version", version
 
