@@ -2,10 +2,11 @@
 
 Standalone Fabric/Kotlin addon for Minecraft 1.21.1 and Cobblemon 1.8.4.
 
-Stage two registers `mondungeons:dungeon_key` and adds a separate key roll to
+Stage three registers `mondungeons:dungeon_key` and adds a separate key roll to
 built-in vanilla `minecraft:chests/*` loot tables. Each newly generated chest has
 a default 1% key chance. Already generated loot is unchanged; datapack-replaced
-chest tables are respected. Using a key currently does nothing and consumes nothing.
+chest tables are respected. Using a tiered key opens the Raid Dungeon odds screen
+without consuming it. Start is disabled until Stage 4 implements dungeon entry.
 The key uses Minecraft's trial-key texture as a temporary visual.
 
 Build with JDK 25: `./gradlew.bat build`. Development Minecraft launches use JDK 21.
@@ -26,7 +27,7 @@ startup explicitly. `/reload` reloads vanilla injection tables, not this config.
 `DungeonKeyTier` maps each configured tier to `mondungeons:rewards/<tier>`.
 These are custom dungeon reward tables, not vanilla `/loot` tables: they support
 both item and Pokemon definitions. Each table resolves `tierOdds` and group item
-weights from the same config. Future UI and payout code must read
+weights from the same config. The UI reads, and future payout code must read,
 `DungeonLootData.tables[tier.lootTableId]`, with each reward's probability equal
 to its group chance times its normalized within-group weight. No second rewards
 file is maintained. The draft `TODO` IDs and Pokemon specs are preserved without
@@ -35,8 +36,10 @@ registry validation; they must be resolved before Stage 6 payout is implemented.
 Keys store `dungeon_key_tier` in vanilla `minecraft:custom_data`, giving each tier
 a distinct name and preventing different tiers from stacking together. Old,
 untagged Stage 1 keys remain generic; no tier is silently assigned to them.
-Client and server should use matching tier configs for tier names; Stage 3 will
-need server-authoritative UI data.
+Client and server should use matching tier configs for inventory tier names.
+Screen tier and reward odds are sent by the server; the client config does not
+control those values. Reward counts appear beside labels; chances are final
+per-run chances, including both the reward group chance and item weight.
 
 Manual checks in a development world with cheats:
 
@@ -46,7 +49,15 @@ Manual checks in a development world with cheats:
   tiers must not stack and opening a chest with any tier must announce discovery.
 - `/loot give @s loot mondungeons:keys/tiers` bypasses the overall 1% chance and
   generates exactly one weighted tier key. Repeated rolls should favor common.
-- Use the key: nothing should happen and the stack should remain.
+- Right-click a tiered key in either hand: Raid Dungeon should show that tier's
+  rewards and odds. Use the page buttons to view all entries. Start is disabled;
+  Done/Escape closes the screen. The held key and its count must remain unchanged.
+- Compare Master Ball chances: common shows about 0.167%, legendary shows 2.5%
+  with default data. These follow 1% or 15% jackpot odds times 6/36 item weight.
+- Untagged or unknown-tier keys report an unrecognized tier without opening a
+  misleading odds screen. No key should be consumed.
+- On a dedicated server, use different client reward odds and confirm the UI
+  still displays the server odds. Restart after changing config.
 - `/loot give @s loot mondungeons:inject/dungeon_key` exercises the key drop table
   (normally only 1% of rolls succeed).
 - For a deterministic injection check, override the chance to `1.0` in a test
