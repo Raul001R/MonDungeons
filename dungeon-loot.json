@@ -1,0 +1,54 @@
+{
+  "_README": [
+    "Loot config for the mondungeons raid dungeon. One source of truth: the UI odds display AND the end-of-run spin both read THIS file.",
+    "How a payout is rolled: (1) pick a reward tier using the player's key tier `tierOdds`, (2) pick an item inside that tier using the item `weight`s.",
+    "`tierOdds` values are percentages and sum to 100 per key. `weight` values inside a tier are relative; normalize them at runtime.",
+    "`chestWeight` is how often each KEY tier spawns in chests (relative weight, lower = rarer) — not part of the payout roll.",
+    "IMPORTANT: every `item` id below is a BEST GUESS. Replace each with the exact registry id from the installed mod before shipping. Cobblemon / Mega Showdown ids are barely in model training data — verify against the real registries, do not trust these strings. Entries with `\"verify\": true` are the ones most likely wrong.",
+    "Pokemon rewards use Cobblemon's spec/bucket system: `type` is `pokemon` and `spec` is a Pokemon properties string. Tune the specs to what you want to hand out.",
+    "All numbers are drafts for balancing."
+  ],
+
+  "keyTiers": {
+    "common":    { "chestWeight": 60, "lootTableId": "mondungeons:rewards/common", "tierOdds": { "jackpot": 1,  "rare": 9,  "uncommon": 30, "common": 60 } },
+    "rare":      { "chestWeight": 25, "lootTableId": "mondungeons:rewards/rare", "tierOdds": { "jackpot": 3,  "rare": 17, "uncommon": 40, "common": 40 } },
+    "epic":      { "chestWeight": 12, "lootTableId": "mondungeons:rewards/epic", "tierOdds": { "jackpot": 7,  "rare": 28, "uncommon": 45, "common": 20 } },
+    "legendary": { "chestWeight": 3, "lootTableId": "mondungeons:rewards/legendary", "tierOdds": { "jackpot": 15, "rare": 40, "uncommon": 35, "common": 10 } }
+  },
+
+  "rewardTiers": {
+    "jackpot": [
+      { "label": "Master Ball",            "type": "item",    "item": "cobblemon:master_ball",          "count": 1, "weight": 6,  "verify": true },
+      { "label": "Wishing Star Crystal",   "type": "item",    "item": "TODO:wishing_star_crystal",      "count": 1, "weight": 6,  "verify": true },
+      { "label": "Ability Patch",          "type": "item",    "item": "cobblemon:ability_patch",        "count": 1, "weight": 8,  "verify": true },
+      { "label": "Enchanted Golden Apple", "type": "item",    "item": "minecraft:enchanted_golden_apple","count": 1, "weight": 10 },
+      { "label": "Shiny / pseudo mon",     "type": "pokemon", "spec": "random shiny=true",              "weight": 6,  "verify": true }
+    ],
+
+    "rare": [
+      { "label": "Mega Stone",             "type": "item",    "item": "TODO:mega_stone",                "count": 1, "weight": 6,  "verify": true },
+      { "label": "Z-Crystal",              "type": "item",    "item": "TODO:z_crystal",                 "count": 1, "weight": 10, "verify": true },
+      { "label": "Gold Bottle Cap",        "type": "item",    "item": "cobblemon:gold_bottle_cap",      "count": 1, "weight": 8,  "verify": true },
+      { "label": "Netherite Scrap",        "type": "item",    "item": "minecraft:netherite_scrap",      "count": 2, "weight": 10 },
+      { "label": "Fossil",                 "type": "item",    "item": "TODO:fossil_pick_which",         "count": 1, "weight": 10, "verify": true },
+      { "label": "Golem Scrap",            "type": "item",    "item": "TODO:golem_scrap",               "count": 1, "weight": 10, "verify": true },
+      { "label": "XP Candy L",             "type": "item",    "item": "cobblemon:exp_candy_l",          "count": 2, "weight": 12, "verify": true }
+    ],
+
+    "uncommon": [
+      { "label": "Tera Shard",             "type": "item",    "item": "TODO:tera_shard",                "count": 2, "weight": 8,  "verify": true },
+      { "label": "Diamonds",               "type": "item",    "item": "minecraft:diamond",              "count": 4, "weight": 12 },
+      { "label": "Ability Capsule",        "type": "item",    "item": "cobblemon:ability_capsule",      "count": 1, "weight": 10, "verify": true },
+      { "label": "PP Max",                 "type": "item",    "item": "cobblemon:pp_max",               "count": 1, "weight": 10, "verify": true },
+      { "label": "EV Vitamin",             "type": "item",    "item": "cobblemon:protein",              "count": 2, "weight": 12, "verify": true },
+      { "label": "Silver Bottle Cap",      "type": "item",    "item": "cobblemon:silver_bottle_cap",    "count": 1, "weight": 10, "verify": true }
+    ],
+
+    "common": [
+      { "label": "Poke Snacks",            "type": "item",    "item": "TODO:poke_snack",                "count": 3, "weight": 15, "verify": true },
+      { "label": "Golden Apples",          "type": "item",    "item": "minecraft:golden_apple",         "count": 2, "weight": 10 },
+      { "label": "XP Candy S/M",           "type": "item",    "item": "cobblemon:exp_candy_m",          "count": 2, "weight": 15, "verify": true },
+      { "label": "Random Pokemon",         "type": "pokemon", "spec": "random",                         "weight": 8 }
+    ]
+  }
+}

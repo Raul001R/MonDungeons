@@ -1,5 +1,56 @@
 # Agent memory
 
+## Discovery message correction (2026-11-06)
+- User tested chest reinsertion and requested announcement only on first find.
+- DungeonKeyDiscovery now marks every unmarked key stack in an opened chest
+  with custom_data.dungeon_key_discovered=true, preserving tier/other data.
+  Sends one message if any stacks were newly marked and calls setChanged.
+  Marker travels with the stack through transfers/splits and persists on save;
+  reopening or reinserting a discovered key no longer announces.
+- Existing keys lack the marker and announce once after this update. Command
+  keys also announce on first chest discovery. No key is consumed.
+- Requires game/server restart to load code. Manual retest: open chest with a
+  fresh key (one message), reopen (none), move key to another chest (none),
+  save/reload and reopen (none); fresh unmarked key still announces.
+- Validation: gradlew.bat build --offline SUCCESS (Kotlin/Java compilation and
+  remapped jar). No in-world retest performed by agent. Re-read on-disk AGENTS.md
+  after user's reminder; memory.md was read before implementing this fix.
+
+## Stage two (2026-11-06)
+- User requested Stage 2 on a separate branch using their untracked
+  dungeon-loot.json. Created feature/stage-two-key-tiers from stage-one branch;
+  no commits/pushes. Preserve/include the supplied JSON in the eventual commit.
+- JSON supplies common/rare/epic/legendary, weights 60/25/12/3 and all draft
+  reward groups/odds. Added explicit lootTableId fields without changing rewards
+  or weights. Original draft lacking that field is also accepted.
+- DungeonLootData copies bundled root JSON to config/mondungeons/dungeon-loot.json
+  if absent. Reads once per process; edit config and restart (not /reload).
+  Validates tier IDs, positive integer chest weights, unique table IDs, odds sum,
+  reward types and positive weights/counts. Bad config fails startup.
+- One CUSTOM dungeon reward table per tier, indexed by ResourceLocation;
+  supports both item and Pokemon definitions. Not vanilla /loot reward tables.
+  Final entry probability = group percent / 100 * item weight / group weight sum.
+  Future UI and spin MUST use DungeonLootData.tables[tier.lootTableId].
+- Draft TODO item IDs/specs remain unverified/unresolved. No payout or Pokemon
+  creation implemented. Resolve against installed registries before Stage 6.
+- Existing vanilla injection table retains 1% overall chance, now references
+  mondungeons:keys/tiers. Fabric loot event adds one weighted pool from loaded
+  tier data to that built-in table; datapack replacements remain respected.
+- All tiers use existing item ID with custom_data.dungeon_key_tier; different
+  tiers do not stack. Item name reflects tier. Old untagged keys stay generic
+  with no assigned tier. Chest discovery still detects every tier by item ID.
+- Client/server matching configs needed for names; Stage 3 must synchronize
+  server-authoritative odds/UI data. No key consumption or UI implemented.
+- Validation: final gradlew.bat build --offline SUCCESS; jar inspection confirms
+  root config, injection and key-tier tables, compiled data loader. No test suite
+  exists. Minecraft runtime initialized 4 tiers and 4 reward tables on first
+  smoke launch. Final build also initialized 4 tiers and 4 tables at 21:21:03;
+  client left open (session 51878). Log snapshot: build/stage-two-client.log.
+- In-world chest injection, visual tier names, stacking and distribution remain
+  manual checks; README contains give/loot commands. Do not claim completed.
+- Remaining decisions: healing, arena, failure cooldown before relevant stages;
+  reward TODOs/specs before payouts. Stage 3 not started.
+
 ## Scope and current work (2026-11-05)
 - User requested stage one from AGENTS.md and this handoff file; use the other
   project at D:\ProgrammingProjects\custom-trainers-cobblemon as reference.
