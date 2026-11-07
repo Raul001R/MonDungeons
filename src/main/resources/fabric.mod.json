@@ -1,0 +1,42 @@
+{
+    "schemaVersion":  1,
+    "id":  "mondungeons",
+    "version":  "${version}",
+    "name":  "MonDungeons",
+    "description":  "Rare dungeon keys and a Cobblemon raid trainer gauntlet. Stage one: chest loot and key item.",
+    "authors":  [
+                    "Sauceology"
+                ],
+    "license":  "CC0-1.0",
+    "icon":  "assets/mondungeons/icon.png",
+    "environment":  "*",
+    "entrypoints":  {
+                        "main":  [
+                                     {
+                                         "value":  "sauceology.mondungeon.MonDungeons",
+                                         "adapter":  "kotlin"
+                                     }
+                                 ],
+                        "client":  [
+                                       {
+                                           "value":  "sauceology.mondungeon.client.MonDungeonsClient",
+                                           "adapter":  "kotlin"
+                                       }
+                                   ]
+                    },
+    "mixins":  [
+                   "mondungeons.mixins.json",
+                   {
+                       "config":  "mondungeons.client.mixins.json",
+                       "environment":  "client"
+                   }
+               ],
+    "depends":  {
+                    "fabricloader":  "\u003e=0.19.5",
+                    "minecraft":  "~1.21.1",
+                    "java":  "\u003e=21",
+                    "fabric-api":  "*",
+                    "fabric-language-kotlin":  "*",
+                    "cobblemon":  "\u003e=1.8.4 \u003c1.9"
+                }
+}
