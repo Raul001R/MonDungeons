@@ -9,6 +9,17 @@
   "screen.mondungeons.reward": "Reward",
   "screen.mondungeons.chance": "Chance per run",
   "screen.mondungeons.start": "Start",
-  "screen.mondungeons.start_pending": "Dungeon entry is coming soon.",
+  "message.mondungeons.occupied": "The Raid Dungeon is occupied. Try again after the current run ends.",
+  "message.mondungeons.return_pending": "Your return is pending. You cannot start another run until you are returned.",
+  "message.mondungeons.cannot_enter": "Finish your battle and stand awake, alive, and unmounted before entering the dungeon.",
+  "message.mondungeons.key_changed": "Your held key changed. Use the key again to reopen the odds screen.",
+  "message.mondungeons.arena_unconfigured": "The dungeon arena has not been configured yet.",
+  "message.mondungeons.arena_unavailable": "The configured dungeon arena is unavailable. Contact an admin.",
+  "message.mondungeons.entered": "You entered the Raid Dungeon. Use /raiddungeon exit to return.",
+  "message.mondungeons.entry_failed": "Dungeon entry failed. Your key was kept; your return will be retried if needed.",
+  "message.mondungeons.no_run": "You have no active dungeon run or pending return.",
+  "message.mondungeons.arena_set": "Dungeon arena saved at your current position and facing.",
+  "message.mondungeons.arena_save_failed": "The dungeon arena could not be saved. Check the server log.",
+  "message.mondungeons.returned": "You returned from the Raid Dungeon.",
   "screen.mondungeons.page": "Page %s / %s"
 }

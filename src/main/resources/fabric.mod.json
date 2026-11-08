@@ -3,7 +3,7 @@
     "id":  "mondungeons",
     "version":  "${version}",
     "name":  "MonDungeons",
-    "description":  "Rare dungeon keys and a Cobblemon raid trainer gauntlet. Stage three: tiered keys and reward odds screen.",
+    "description":  "Rare dungeon keys and a Cobblemon raid trainer gauntlet. Stage four: arena entry, exact return and global run lock.",
     "authors":  [
                     "Sauceology"
                 ],

@@ -2,11 +2,11 @@
 
 Standalone Fabric/Kotlin addon for Minecraft 1.21.1 and Cobblemon 1.8.4.
 
-Stage three registers `mondungeons:dungeon_key` and adds a separate key roll to
+Stage four registers `mondungeons:dungeon_key` and adds a separate key roll to
 built-in vanilla `minecraft:chests/*` loot tables. Each newly generated chest has
 a default 1% key chance. Already generated loot is unchanged; datapack-replaced
 chest tables are respected. Using a tiered key opens the Raid Dungeon odds screen
-without consuming it. Start is disabled until Stage 4 implements dungeon entry.
+without consuming it. Start enters the configured arena, one player at a time.
 The key uses Minecraft's trial-key texture as a temporary visual.
 
 Build with JDK 25: `./gradlew.bat build`. Development Minecraft launches use JDK 21.
@@ -50,7 +50,7 @@ Manual checks in a development world with cheats:
 - `/loot give @s loot mondungeons:keys/tiers` bypasses the overall 1% chance and
   generates exactly one weighted tier key. Repeated rolls should favor common.
 - Right-click a tiered key in either hand: Raid Dungeon should show that tier's
-  rewards and odds. Use the page buttons to view all entries. Start is disabled;
+  rewards and odds. Use the page buttons to view all entries;
   Done/Escape closes the screen. The held key and its count must remain unchanged.
 - Compare Master Ball chances: common shows about 0.167%, legendary shows 2.5%
   with default data. These follow 1% or 15% jackpot odds times 6/36 item weight.
@@ -75,3 +75,42 @@ to that player in chat only on first discovery. All newly discovered key stacks
 in that chest are marked persistently; reopening or moving those keys to another
 chest won't announce them again. Existing unmarked keys announce once after
 updating. The tier and other custom data are preserved.
+
+Stage 4 arena setup and checks:
+
+The arena is deliberately **unconfigured** by default, as requested. Start reports
+that setup is needed and leaves your position/key unchanged. To configure it,
+build your arena, stand at its entrance facing the desired direction, and run
+`/raiddungeon setarena` (operator permission level 2). This saves your exact
+dimension, X/Y/Z, yaw and pitch to `config/mondungeons/dungeon-arena.json` and
+applies immediately. No structure or new dimension is generated. You can also
+edit this config and restart; `arena: null` disables entry. `returnRetryTicks`
+controls how often unresolved returns are retried (default 20 server ticks).
+
+1. Before configuring, try Start: expect the unconfigured message, no movement,
+   no key consumption. The server must remain available for a later attempt.
+2. After setting the arena, move elsewhere and note your exact position, facing
+   and dimension with F3. Use a key and click Start. You should arrive at the
+   saved arena entrance. Use `/raiddungeon exit` to restore the original position,
+   dimension and facing. Your key must remain. Repeat from another dimension.
+3. With two players, have player A start. Player B's Start must report occupied.
+   Player B's exit command must not release A's lock. After A exits, B can start.
+4. Change/remove the held key or selected slot while the screen is open: Start
+   must refuse if the original hand no longer holds the same key components.
+   Reopen the screen for a new attempt. Repeated Start packets cannot start
+   multiple runs; each offer token is single-use and bound to its player/hand.
+5. Disconnect while inside, then reconnect; expect return to origin. Die inside,
+   respawn, and expect return. Stop/restart the server while inside and reconnect;
+   expect return. Other players must still be able to enter after cleanup.
+
+The global active run exists only in memory. A separate overworld SavedData
+journal (`mondungeons_returns`) stores return obligations before teleportation,
+following the gym reference. Entries are removed only after a successful return
+and saving player data. Failed returns remain queued; a player with a pending
+return cannot start a new run. Exit, death, disconnect and shutdown release the
+active lock. Battle-specific failure handling remains for later stages.
+
+`./gradlew.bat build --offline` also runs dependency-free admission checks for
+save-before-teleport ordering, global exclusivity, failed persistence/teleport/
+rollback cleanup, retries and repeated cleanup. In-world/multiplayer checks
+above are still required. No rounds, rewards or key consumption are implemented.

@@ -56,6 +56,20 @@ tasks.withType(JavaExec).configureEach {
 	javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(21) }
 }
 
+tasks.register('verifyDungeonAdmission', JavaExec) {
+	group = 'verification'
+	description = 'Checks dungeon admission ordering and lock cleanup without launching Minecraft.'
+	dependsOn tasks.named('testClasses')
+	classpath = sourceSets.test.runtimeClasspath
+	mainClass = 'sauceology.mondungeon.DungeonAdmissionChecksKt'
+}
+tasks.named('check') { dependsOn tasks.named('verifyDungeonAdmission') }
+tasks.named('test') {
+	// Regression checks use the dependency-free main above, not a JUnit engine.
+	dependsOn tasks.named('verifyDungeonAdmission')
+	failOnNoDiscoveredTests = false
+}
+
 processResources {
     from('dungeon-loot.json')
 	def version = project.version

@@ -15,7 +15,7 @@ data class RaidOddsEntry(val label: String, val probability: Double) {
     }
 }
 
-data class RaidOddsPayload(val tier: String, val rewards: List<RaidOddsEntry>) : CustomPacketPayload {
+data class RaidOddsPayload(val tier: String, val rewards: List<RaidOddsEntry>, val startToken: String) : CustomPacketPayload {
     override fun type(): CustomPacketPayload.Type<RaidOddsPayload> = TYPE
 
     companion object {
@@ -23,6 +23,7 @@ data class RaidOddsPayload(val tier: String, val rewards: List<RaidOddsEntry>) :
         val CODEC: StreamCodec<RegistryFriendlyByteBuf, RaidOddsPayload> = StreamCodec.composite(
             ByteBufCodecs.STRING_UTF8, RaidOddsPayload::tier,
             RaidOddsEntry.CODEC.apply(ByteBufCodecs.list()), RaidOddsPayload::rewards,
+            ByteBufCodecs.STRING_UTF8, RaidOddsPayload::startToken,
             ::RaidOddsPayload
         )
     }
