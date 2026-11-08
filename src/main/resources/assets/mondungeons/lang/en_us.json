@@ -1,5 +1,14 @@
 {
   "item.mondungeons.dungeon_key": "Dungeon Key",
   "item.mondungeons.dungeon_key.tier": "%s Dungeon Key",
-  "message.mondungeons.dungeon_key_found": "You've found a dungeon key!"
+  "message.mondungeons.dungeon_key_found": "You've found a dungeon key!",
+  "message.mondungeons.unknown_key_tier": "This dungeon key has no recognized tier.",
+  "message.mondungeons.ui_unavailable": "The Raid Dungeon screen is unavailable on your client.",
+  "screen.mondungeons.raid": "Raid Dungeon",
+  "screen.mondungeons.key": "%s Dungeon Key",
+  "screen.mondungeons.reward": "Reward",
+  "screen.mondungeons.chance": "Chance per run",
+  "screen.mondungeons.start": "Start",
+  "screen.mondungeons.start_pending": "Dungeon entry is coming soon.",
+  "screen.mondungeons.page": "Page %s / %s"
 }

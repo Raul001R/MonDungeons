@@ -1,5 +1,38 @@
 # Agent memory
 
+## Stage three UI (2026-11-06)
+- Read AGENTS.md and memory.md before starting. User authorized pushing Stage 2
+  and beginning Stage 3. Stage 2 committed dc94582 and pushed to
+  origin/feature/stage-two-key-tiers; remote hash verified. No main merge.
+  GitHub CLI is unavailable; no PR created. Review link:
+  https://github.com/Raul001R/MonDungeons/pull/new/feature/stage-two-key-tiers
+- Current branch feature/stage-three-raid-ui, based on that Stage 2 commit.
+- Key use in either hand sends RaidOddsPayload server -> client, using the
+  held key's DungeonKeyTier.lootTableId and DungeonLootData.tables entry.
+  No client-provided odds, duplicated reward lists, payout or key consumption.
+- Payload contains server tier ID, configured reward labels/counts and final
+  per-run probabilities. Unknown/untagged keys report a message instead of
+  assigning a tier. Client without the payload channel gets an unavailable
+  message. No client class references in common sources.
+- RaidOddsScreen is a non-pausing custom screen with responsive pagination,
+  row hover details, disabled Start (Stage 4), Done/Escape close. Server odds
+  apply even with different client reward config. Inventory names still use
+  the local config as before. Draft unresolved rewards remain visible by label.
+- README includes manual Stage 3 tests. Default Master Ball chance is 0.167%
+  for common and 2.5% for legendary. Test both hands, all four tiers, paging,
+  resize, closing, key count unchanged, invalid tiers and client/server mismatch.
+- Final gradlew.bat build --offline SUCCESS, including client and common
+  compilation/remapped jar. Independent config arithmetic check confirms final
+  reward probabilities sum to 1 for all four tiers. No automated test suite
+  exists. Runtime initialized Stage 3 with four tiers/tables at 21:52:05;
+  client left open (session 8083). Log: build/stage-three-client.log.
+  In-world use/screen rendering and dedicated-server mismatch tests are pending;
+  do not describe those as tested.
+- Added .kotlin/ to ignore compiler session artifacts. Updated mod description.
+- Stage 3 changes not committed/pushed yet. Stage 4 not started; arena/healing/
+  cooldown decisions remain open, and TODO reward IDs/specs need resolution
+  before Stage 6. The Start button intentionally has no request/action yet.
+
 ## Discovery message correction (2026-11-06)
 - User tested chest reinsertion and requested announcement only on first find.
 - DungeonKeyDiscovery now marks every unmarked key stack in an opened chest
