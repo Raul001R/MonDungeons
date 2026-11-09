@@ -1,0 +1,879 @@
+{
+  "enabled": true,
+  "healBeforeBoss": true,
+  "dialogue": {
+    "intro": [
+      "Ready when you are. Show me your team!",
+      "You have made it this far. Keep your focus!"
+    ],
+    "defeat": [
+      "Well played! The next trainer is waiting.",
+      "That was a good battle. Keep going!",
+      "You earned that win!"
+    ],
+    "victory": [
+      "A tough round. Train up and try again!",
+      "Your key is safe. I will be here for the rematch."
+    ]
+  },
+  "bossDialogue": {
+    "intro": [
+      "One final challenge. Think you can bring down this titan?"
+    ],
+    "defeat": [
+      "You beat the titan! Go claim your prize."
+    ]
+  },
+  "themes": [
+    {
+      "id": "rock",
+      "dialogue": {
+        "intro": [
+          "Welcome to the Rock round. Let us see what you have!",
+          "My Rock team is ready. Your move!"
+        ]
+      },
+      "trainers": [
+        {
+          "name": "Brock",
+          "trainerId": "leader_brock_0038",
+          "slots": [
+            0,
+            1,
+            3,
+            4,
+            5
+          ],
+          "appearance": "mondungeons:trainers/leader_brock_0038"
+        },
+        {
+          "name": "Leader Brock",
+          "trainerId": "leader_brock_019e",
+          "slots": [
+            0,
+            2,
+            3
+          ],
+          "appearance": "mondungeons:trainers/leader_brock_019e"
+        }
+      ]
+    },
+    {
+      "id": "water",
+      "dialogue": {
+        "intro": [
+          "Welcome to the Water round. Let us see what you have!",
+          "My Water team is ready. Your move!"
+        ]
+      },
+      "trainers": [
+        {
+          "name": "Misty",
+          "trainerId": "leader_misty_0030",
+          "slots": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5
+          ],
+          "appearance": "mondungeons:trainers/leader_misty_0030"
+        },
+        {
+          "name": "Leader Misty",
+          "trainerId": "leader_misty_019f",
+          "slots": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "appearance": "mondungeons:trainers/leader_misty_019f"
+        },
+        {
+          "name": "Leader Tessy",
+          "trainerId": "leader_tessy_05b1",
+          "slots": [
+            0,
+            2,
+            3,
+            4,
+            5
+          ],
+          "appearance": "mondungeons:trainers/leader_tessy_05b1"
+        }
+      ]
+    },
+    {
+      "id": "electric",
+      "dialogue": {
+        "intro": [
+          "Welcome to the Electric round. Let us see what you have!",
+          "My Electric team is ready. Your move!"
+        ]
+      },
+      "trainers": [
+        {
+          "name": "Leader Lt. Surge",
+          "trainerId": "leader_lt_surge_01a0",
+          "slots": [
+            0,
+            1,
+            2,
+            3,
+            4
+          ],
+          "appearance": "mondungeons:trainers/leader_lt_surge_01a0"
+        },
+        {
+          "name": "Lt. Surge",
+          "trainerId": "leader_lt_surge_0033",
+          "slots": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "appearance": "mondungeons:trainers/leader_lt_surge_0033"
+        },
+        {
+          "name": "Volkner",
+          "trainerId": "gym_leader_volkner_0591",
+          "slots": [
+            1,
+            2,
+            3,
+            4,
+            5
+          ],
+          "appearance": "mondungeons:trainers/gym_leader_volkner_0591"
+        }
+      ]
+    },
+    {
+      "id": "grass",
+      "dialogue": {
+        "intro": [
+          "Welcome to the Grass round. Let us see what you have!",
+          "My Grass team is ready. Your move!"
+        ]
+      },
+      "trainers": [
+        {
+          "name": "Erika",
+          "trainerId": "leader_erika_0041",
+          "slots": [
+            0,
+            1,
+            3,
+            4,
+            5
+          ],
+          "appearance": "mondungeons:trainers/leader_erika_0041"
+        },
+        {
+          "name": "Leader Erika",
+          "trainerId": "leader_erika_01a1",
+          "slots": [
+            0,
+            1,
+            2,
+            3,
+            4
+          ],
+          "appearance": "mondungeons:trainers/leader_erika_01a1"
+        }
+      ]
+    },
+    {
+      "id": "poison",
+      "dialogue": {
+        "intro": [
+          "Welcome to the Poison round. Let us see what you have!",
+          "My Poison team is ready. Your move!"
+        ]
+      },
+      "trainers": [
+        {
+          "name": "Agatha",
+          "trainerId": "elite_four_agatha_019c",
+          "slots": [
+            0,
+            1,
+            2,
+            3,
+            4
+          ],
+          "appearance": "mondungeons:trainers/elite_four_agatha_019c"
+        },
+        {
+          "name": "Biker Lukas",
+          "trainerId": "biker_lukas_00cf",
+          "slots": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "appearance": "mondungeons:trainers/biker_lukas_00cf"
+        },
+        {
+          "name": "Ace Trainer Austina",
+          "trainerId": "ace_trainer_austina_0198",
+          "slots": [
+            1,
+            2,
+            3,
+            4
+          ],
+          "appearance": "mondungeons:trainers/ace_trainer_austina_0198"
+        }
+      ]
+    },
+    {
+      "id": "psychic",
+      "dialogue": {
+        "intro": [
+          "Welcome to the Psychic round. Let us see what you have!",
+          "My Psychic team is ready. Your move!"
+        ]
+      },
+      "trainers": [
+        {
+          "name": "Lucian",
+          "trainerId": "elite_four_lucian_05a6",
+          "slots": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5
+          ],
+          "appearance": "mondungeons:trainers/elite_four_lucian_05a6"
+        }
+      ]
+    },
+    {
+      "id": "fighting",
+      "dialogue": {
+        "intro": [
+          "Welcome to the Fighting round. Let us see what you have!",
+          "My Fighting team is ready. Your move!"
+        ]
+      },
+      "trainers": [
+        {
+          "name": "Chuck",
+          "trainerId": "leader_chuck_013d",
+          "slots": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5
+          ],
+          "appearance": "mondungeons:trainers/leader_chuck_013d"
+        }
+      ]
+    },
+    {
+      "id": "bug",
+      "dialogue": {
+        "intro": [
+          "Welcome to the Bug round. Let us see what you have!",
+          "My Bug team is ready. Your move!"
+        ]
+      },
+      "trainers": [
+        {
+          "name": "Bugsy",
+          "trainerId": "leader_bugsy_0008",
+          "slots": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5
+          ],
+          "appearance": "mondungeons:trainers/leader_bugsy_0008"
+        },
+        {
+          "name": "Aaron",
+          "trainerId": "elite_four_aaron_05a3",
+          "slots": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "appearance": "mondungeons:trainers/elite_four_aaron_05a3"
+        }
+      ]
+    },
+    {
+      "id": "ground",
+      "dialogue": {
+        "intro": [
+          "Welcome to the Ground round. Let us see what you have!",
+          "My Ground team is ready. Your move!"
+        ]
+      },
+      "trainers": [
+        {
+          "name": "Bertha",
+          "trainerId": "elite_four_bertha_05a4",
+          "slots": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5
+          ],
+          "appearance": "mondungeons:trainers/elite_four_bertha_05a4"
+        },
+        {
+          "name": "Elite Four Moleman",
+          "trainerId": "elite_four_moleman_05b3",
+          "slots": [
+            0,
+            1,
+            2,
+            3,
+            4
+          ],
+          "appearance": "mondungeons:trainers/elite_four_moleman_05b3"
+        }
+      ]
+    },
+    {
+      "id": "ice",
+      "dialogue": {
+        "intro": [
+          "Welcome to the Ice round. Let us see what you have!",
+          "My Ice team is ready. Your move!"
+        ]
+      },
+      "trainers": [
+        {
+          "name": "Pryce",
+          "trainerId": "leader_pryce_003a",
+          "slots": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5
+          ],
+          "appearance": "mondungeons:trainers/leader_pryce_003a"
+        },
+        {
+          "name": "Pryce",
+          "trainerId": "leader_pryce_003b",
+          "slots": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5
+          ],
+          "appearance": "mondungeons:trainers/leader_pryce_003b"
+        },
+        {
+          "name": "Pryce",
+          "trainerId": "leader_pryce_003c",
+          "slots": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5
+          ],
+          "appearance": "mondungeons:trainers/leader_pryce_003c"
+        }
+      ]
+    },
+    {
+      "id": "steel",
+      "dialogue": {
+        "intro": [
+          "Welcome to the Steel round. Let us see what you have!",
+          "My Steel team is ready. Your move!"
+        ]
+      },
+      "trainers": [
+        {
+          "name": "Jasmine",
+          "trainerId": "leader_jasmine_003e",
+          "slots": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5
+          ],
+          "appearance": "mondungeons:trainers/leader_jasmine_003e"
+        },
+        {
+          "name": "Jasmine",
+          "trainerId": "leader_jasmine_003f",
+          "slots": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5
+          ],
+          "appearance": "mondungeons:trainers/leader_jasmine_003f"
+        },
+        {
+          "name": "Jasmine",
+          "trainerId": "leader_jasmine_0040",
+          "slots": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5
+          ],
+          "appearance": "mondungeons:trainers/leader_jasmine_0040"
+        }
+      ]
+    },
+    {
+      "id": "normal",
+      "dialogue": {
+        "intro": [
+          "Welcome to the Normal round. Let us see what you have!",
+          "My Normal team is ready. Your move!"
+        ]
+      },
+      "trainers": [
+        {
+          "name": "Whitney",
+          "trainerId": "leader_whitney_004c",
+          "slots": [
+            0,
+            1,
+            2,
+            4,
+            5
+          ],
+          "appearance": "mondungeons:trainers/leader_whitney_004c"
+        },
+        {
+          "name": "Whitney",
+          "trainerId": "leader_whitney_0031",
+          "slots": [
+            0,
+            1,
+            2,
+            3,
+            4
+          ],
+          "appearance": "mondungeons:trainers/leader_whitney_0031"
+        },
+        {
+          "name": "Leader Mel",
+          "trainerId": "leader_mel_05ad",
+          "slots": [
+            0,
+            1,
+            2,
+            3,
+            4
+          ],
+          "appearance": "mondungeons:trainers/leader_mel_05ad"
+        }
+      ]
+    },
+    {
+      "id": "ghost",
+      "dialogue": {
+        "intro": [
+          "Welcome to the Ghost round. Let us see what you have!",
+          "My Ghost team is ready. Your move!"
+        ]
+      },
+      "trainers": [
+        {
+          "name": "Morty",
+          "trainerId": "leader_morty_0034",
+          "slots": [
+            0,
+            1,
+            3,
+            4
+          ],
+          "appearance": "mondungeons:trainers/leader_morty_0034"
+        },
+        {
+          "name": "Elite Four Elias",
+          "trainerId": "elite_four_elias_05b4",
+          "slots": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5
+          ],
+          "appearance": "mondungeons:trainers/elite_four_elias_05b4"
+        }
+      ]
+    },
+    {
+      "id": "flying",
+      "dialogue": {
+        "intro": [
+          "Welcome to the Flying round. Let us see what you have!",
+          "My Flying team is ready. Your move!"
+        ]
+      },
+      "trainers": [
+        {
+          "name": "Leader Alice",
+          "trainerId": "leader_alice_05ac",
+          "slots": [
+            0,
+            1,
+            2,
+            4
+          ],
+          "appearance": "mondungeons:trainers/leader_alice_05ac"
+        }
+      ]
+    },
+    {
+      "id": "dragon",
+      "dialogue": {
+        "intro": [
+          "Welcome to the Dragon round. Let us see what you have!",
+          "My Dragon team is ready. Your move!"
+        ]
+      },
+      "trainers": [
+        {
+          "name": "Elite Four Lance",
+          "trainerId": "elite_four_lance_0056",
+          "slots": [
+            0,
+            1,
+            2,
+            4,
+            5
+          ],
+          "appearance": "mondungeons:trainers/elite_four_lance_0056"
+        },
+        {
+          "name": "Elite Four Lance",
+          "trainerId": "elite_four_lance_0057",
+          "slots": [
+            1,
+            3,
+            4,
+            5
+          ],
+          "appearance": "mondungeons:trainers/elite_four_lance_0057"
+        },
+        {
+          "name": "Clair",
+          "trainerId": "leader_clair_0026",
+          "slots": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "appearance": "mondungeons:trainers/leader_clair_0026"
+        }
+      ]
+    },
+    {
+      "id": "fairy",
+      "dialogue": {
+        "intro": [
+          "Welcome to the Fairy round. Let us see what you have!",
+          "My Fairy team is ready. Your move!"
+        ]
+      },
+      "trainers": [
+        {
+          "name": "Elite Four Arabella",
+          "trainerId": "elite_four_arabella_05b5",
+          "slots": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5
+          ],
+          "appearance": "mondungeons:trainers/elite_four_arabella_05b5"
+        }
+      ]
+    },
+    {
+      "id": "dark",
+      "dialogue": {
+        "intro": [
+          "Welcome to the Dark round. Let us see what you have!",
+          "My Dark team is ready. Your move!"
+        ]
+      },
+      "trainers": [
+        {
+          "name": "Leader Vega",
+          "trainerId": "leader_vega_05ab",
+          "slots": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "appearance": "mondungeons:trainers/leader_vega_05ab"
+        },
+        {
+          "name": "Light of Ruin Vega",
+          "trainerId": "light_of_ruin_vega_05c1",
+          "slots": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5
+          ],
+          "appearance": "mondungeons:trainers/light_of_ruin_vega_05c1"
+        }
+      ]
+    },
+    {
+      "id": "fire",
+      "dialogue": {
+        "intro": [
+          "Welcome to the Fire round. Let us see what you have!",
+          "My Fire team is ready. Your move!"
+        ]
+      },
+      "trainers": [
+        {
+          "name": "Leader Blaine",
+          "trainerId": "leader_blaine_01a3",
+          "slots": [
+            0,
+            1,
+            3,
+            5
+          ],
+          "appearance": "mondungeons:trainers/leader_blaine_01a3"
+        },
+        {
+          "name": "Flint",
+          "trainerId": "elite_four_flint_05a5",
+          "slots": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5
+          ],
+          "appearance": "mondungeons:trainers/elite_four_flint_05a5"
+        }
+      ]
+    }
+  ],
+  "bosses": [
+    {
+      "name": "Titan Garchomp",
+      "trainerId": "champion_cynthia_03a5",
+      "slots": [
+        5
+      ],
+      "appearance": "mondungeons:trainers/champion_cynthia_03a5",
+      "type": "dragon",
+      "moves": [
+        "earthquake",
+        "dragonclaw",
+        "swordsdance",
+        "stoneedge"
+      ],
+      "evs": {
+        "hp": 252,
+        "atk": 252,
+        "spe": 6
+      }
+    },
+    {
+      "name": "Titan Dragonite",
+      "trainerId": "elite_four_lance_0057",
+      "slots": [
+        3
+      ],
+      "appearance": "mondungeons:trainers/elite_four_lance_0057",
+      "type": "dragon",
+      "moves": [
+        "dragonclaw",
+        "firepunch",
+        "extremespeed",
+        "dragondance"
+      ],
+      "evs": {
+        "hp": 252,
+        "atk": 252,
+        "spe": 6
+      }
+    },
+    {
+      "name": "Titan Salamence",
+      "trainerId": "elite_four_lance_0057",
+      "slots": [
+        5
+      ],
+      "appearance": "mondungeons:trainers/elite_four_lance_0057",
+      "type": "dragon",
+      "moves": [
+        "dragonclaw",
+        "firefang",
+        "earthquake",
+        "dragondance"
+      ],
+      "evs": {
+        "hp": 252,
+        "atk": 252,
+        "spe": 6
+      }
+    },
+    {
+      "name": "Titan Tyranitar",
+      "trainerId": "leader_brock_0038",
+      "slots": [
+        4
+      ],
+      "appearance": "mondungeons:trainers/leader_brock_0038",
+      "type": "rock",
+      "moves": [
+        "stoneedge",
+        "crunch",
+        "firepunch",
+        "dragondance"
+      ],
+      "evs": {
+        "hp": 252,
+        "atk": 252,
+        "spe": 6
+      }
+    },
+    {
+      "name": "Titan Metagross",
+      "trainerId": "leader_jasmine_003e",
+      "slots": [
+        2
+      ],
+      "appearance": "mondungeons:trainers/leader_jasmine_003e",
+      "type": "steel",
+      "moves": [
+        "meteormash",
+        "zenheadbutt",
+        "bulletpunch",
+        "earthquake"
+      ],
+      "evs": {
+        "hp": 252,
+        "atk": 252,
+        "spe": 6
+      }
+    },
+    {
+      "name": "Titan Arcanine",
+      "trainerId": "elite_four_flint_05a5",
+      "slots": [
+        4
+      ],
+      "appearance": "mondungeons:trainers/elite_four_flint_05a5",
+      "type": "fire",
+      "moves": [
+        "flareblitz",
+        "extremespeed",
+        "crunch",
+        "willowisp"
+      ],
+      "evs": {
+        "hp": 252,
+        "atk": 252,
+        "spe": 6
+      }
+    },
+    {
+      "name": "Titan Rhyperior",
+      "trainerId": "elite_four_bertha_05a4",
+      "slots": [
+        5
+      ],
+      "appearance": "mondungeons:trainers/elite_four_bertha_05a4",
+      "type": "ground",
+      "moves": [
+        "earthquake",
+        "stoneedge",
+        "megahorn",
+        "swordsdance"
+      ],
+      "evs": {
+        "hp": 252,
+        "atk": 252,
+        "spe": 6
+      }
+    },
+    {
+      "name": "Titan Snorlax",
+      "trainerId": "leader_whitney_004c",
+      "slots": [
+        5
+      ],
+      "appearance": "mondungeons:trainers/leader_whitney_004c",
+      "type": "normal",
+      "moves": [
+        "bodyslam",
+        "crunch",
+        "earthquake",
+        "curse"
+      ],
+      "evs": {
+        "hp": 252,
+        "atk": 252,
+        "spe": 6
+      }
+    },
+    {
+      "name": "Titan Gyarados",
+      "trainerId": "leader_misty_0030",
+      "slots": [
+        5
+      ],
+      "appearance": "mondungeons:trainers/leader_misty_0030",
+      "type": "water",
+      "moves": [
+        "waterfall",
+        "crunch",
+        "icefang",
+        "dragondance"
+      ],
+      "evs": {
+        "hp": 252,
+        "atk": 252,
+        "spe": 6
+      }
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "name": "mondungeons:trainers/elite_four_aaron_05a3",
+  "order": 0,
+  "variations": [
+    {
+      "aspects": [],
+      "layers": [],
+      "model": "cobblemon:steve.geo",
+      "poser": "cobblemon:standard",
+      "texture": "rctmod:textures/trainers/single/elite_four_aaron_05a3.png"
+    }
+  ]
+}

@@ -1,5 +1,135 @@
 # Agent memory
 
+## Publish version 1.0.1 (2026-11-09)
+- User explicitly requested push after local implementation/validation finished.
+  Commit the tested changes on bugfix/1.0.1 and push that feature branch; keep main
+  untouched. Local build and all11Minecraft integration tests passed; client
+  missing-RCT skin fallback visually verified. Check remote CI after push.
+
+## Version 1.0.1 variety/dialogue/skin fixes (2026-11-09, implemented locally)
+- User additionally requires a full-party heal immediately before the boss.
+  Add round9 to healing (2/4/6/8/9); new roster config healBeforeBoss=true
+  applies this to preserved older round configs too. Implemented and runtime-verified.
+- Additional user requirement: every Pokemon must match the round's advertised
+  type. User encountered pure Steel in a Dragon round. Dual types qualify only
+  when one actual type matches (Dragon/Steel yes, pure Steel no). RCT trainer
+  labels are not sufficient: validate actual Cobblemon species/form types when
+  building theme pools and teams, including randomly selected slots. UI/round
+  announcements must use the selected theme. Reject invalid configured teams
+  before teleport/lock rather than silently fielding an off-theme Pokemon.
+  Review roster eligibility: filtering off-theme slots can reduce team sizes,
+  so preserve required round counts without duplicating slots or guessing types.
+  Implemented and runtime-verified; see results below.
+- Additional user request: reduce spamming of overpowered moves. Current team
+  builder copies competitive RCT movesets unchanged and uses native battle AI.
+  Include configurable, species-appropriate move balancing in 1.0.1: reduce
+  oppressive regular-trainer moves/combos and repetitive move selection where
+  supported by the real battle API. Keep the giant final boss challenging.
+  Implemented as legal balanced movesets and native PP budgets below; no AI
+  turn cooldown or global player move restrictions.
+- User says fainting stall resolved and may have been one-off. Pause that
+  investigation; no unproven battle-engine patch. Initial regression test and
+  build.gradle registration are preserved in stash named Paused unconfirmed
+  faint-switch investigation on fix/dungeon-faint-switch. They are NOT on release.
+- User requested version1.1, immediately corrected to1.0.1. Branch bugfix/1.0.1
+  from publishedcc21406; metadata version now1.0.1. No push requested yet.
+- Requested varied Pokemon/types each run, NPC dialogue, missing faces. This
+  explicitly changes prior fixed-roster behavior; preserve10rounds, level curve,
+  doubles slots,2/4/6/8heals, free retries, key-tier-independent difficulty and
+  giant strong final boss. Plan data-driven per-run theme/team/boss pools.
+- Read AGENTS.md/memory.md. Found actual UV mismatch: selected Cobblemon
+  trainer.geo texture64x128, RCT skins64x64. Cobblemon's native player variation
+  uses steve.geo/alex.geo with same standard poser. Use compatible player model.
+- Current skins also point to rctmod assets, absent if RCT not on client. RCT
+  is optional for addon load but required SERVER runtime for trainer teams.
+  Do NOT bundle vendor skin PNGs. Current RCT project license differs from its
+  older JAR metadata; preserve resource references and use eight built-in vanilla
+  player skins as a client-only missing-resource fallback. No hard RCT dependency.
+- Implemented and locally validated: roster with18actual type themes,
+  39trainer profiles/9giant bosses, distinct themes per attempt, randomized
+  eligible slots, typed announcements and intro/win/loss dialogue. Added preflight
+  actual-form type validation before lock/teleport. Fixed the finished-round
+  dialogue lookup to use RoundAdvance.finishedRound instead of advanced counter.
+- dungeon-moves.json config: regular max90base power, at most1mild utility,
+  species-legal source/level-up moves, explicit oppressive/variable-power move
+  exclusions, competitive item exclusions. Moves>=80power start2PP, bosses4PP;
+  total-use cap, NOT turn cooldown; no player move changes or engine interception.
+- Changed own NPC variants to Cobblemon steve.geo (player UV layout, not Steve
+  skin); added resource-reload-aware missing-texture fallback for server-onlyRCT.
+  Concrete NPCRenderer.getTextureLocation name checked against raw production JAR.
+- First build/100seed roster checks PASS before latest heal changes. Runtime
+  tests caught case-sensitive ElementalType.name (Rock vs rock), corrected; next
+  run caught optional Mega Stone fallback being removed with Life Orb, corrected
+  to resolve installed source alternatives first then apply item exclusions.
+  Final runtime suite checks all39profiles/9bosses and original10tests; results below.
+- Full build with -PrctCompat=true --offline PASS (1m22s); all11Minecraft tests
+  PASS (12.82s test execution). All39trainer profiles/9bosses validated for real
+  form types, legal balanced moves, PP caps, skins64x64/modelcompatibility;
+  pureSteel Melmetal rejected inDragon, Dragon/Steel Dialga accepted. Native
+  battle starts preserve PP caps. Full run coordinator verifies party healed
+  before boss after deliberately injuring party following round9; original
+  payout/return/key/lock failure regressions pass. Log build/1.0.1-validation.log.
+- Expanded species surfaced older strict display-name comparison (Mr.Mime,
+  Mr.Rime, Porygon-Z, TapuFini); corrected to Species.showdownId(). Explicitly
+  populate live boss MoveSet after creation and validate every move against actual
+  species/form learnset; all9boss movesets verified. No Showdown turn patch.
+- Client verification completed without RCT installed locally. Renderer selector
+  uses @Desc with remappable class literals to select the concrete NPC overload
+  without accidentally matching the generic Entity bridge in development.
+- Client rendering verification PASS without localRCT: launched normal devclient,
+  created separate creative superflat world "1.0.1 NPC Visual Test" (no existing
+  world opened). Summoned stationary MonDungeons Brock/Misty appearance samples;
+  both rendered distinct vanilla fallback skins with visible correct faces.
+  Screenshot inspected: build/1.0.1-npc-faces.png. All50skin resources confirmed
+  64x64; sourceRCT model UV fix uses the matching native player model. Client
+  selector applied successfully with @Desc. No vendor PNGs bundled/distributed.
+- Development preview client closed normally and test world saved; user Minecraft
+  processes/worlds left alone. No push requested for this branch. Final build
+  refreshes the packaged jar after the @Desc client selector change.
+- FINAL: build --offline PASS47s, including100seed roster/config/admission
+  checks and old-config pre-boss-heal regression. Artifact:
+  build/libs/mondungeons-1.0.1.jar. Packaged @Desc selector inspected with javap:
+  correct concrete NPC argument and production intermediary ResourceLocation
+  return class_2960. All11Minecraft integration tests passed on final server code;
+  latest changes after that were the client selector (tested in-world), unit
+  check, docs/memory. Work is local on bugfix/1.0.1, uncommitted/unpushed.
+  Remaining validation limit: no human full-modpack10battle playthrough; native
+  transition/payout tests use synthetic wins. No unproven faint-engine fix.
+
+## Reported faint/replacement stall (2026-11-09, paused by user)
+- User supplied server excerpt: repeated Pokemon entity KILLED/DISCARDED section
+  warnings, XP-cap debug and NPC PokemonList prints; no explicit battle exception.
+  Friend had3Pokemon, one fainted,2healthy remained; no replacement prompt and
+  NPC stopped. Round not confirmed. Do not assume exhausted party or doubles.
+- Branch fix/dungeon-faint-switch from published Stage7cc21406. Preserved local
+  CI validation memory update. Read AGENTS.md/memory.md and actual Cobblemon1.8.4
+  bytecode; reference dumps in ignored build/faint-switch-reference.
+- Native FaintInstruction awaits recallWithAnimation future before faint packet
+  and subsequent requests. Entity-removal/recall future is a hypothesis, not yet
+  proven. Prior synthetic-victory tests never exercised real faint/forced switch.
+- Adding actual Showdown-turn regression tests for singles/doubles with3player
+  Pokemon and healthy reserves. Need reproduce before fixing; no gameplay change
+  yet. /monDungeons exit remains the immediate safe abort for the trapped player.
+
+## Kotlin compiler CI download fix verified (2026-11-09)
+- User reported a second Stage6 failing check. Same source commit had one passing
+  PR run and one failing push run: the failing dependency was Kotlin compiler
+  embeddable2.4.20 redirected from Maven Central to a GitHub browser URL (HTTP504).
+  Verify ALL current checks rather than reporting a single green run as complete.
+- Fix pushed on Stage6 as9c363fe; merged/pushed on Stage7 ascc21406. CI downloads
+  official JetBrains asset587891620, verifies published SHA256, fetches its POM,
+  and routes just that compiler/version through .github/ci-repositories.gradle's
+  exclusive CI-only Maven repo. Kotlin versions/game code remain unchanged.
+- Full local build with official downloaded compiler + init script, --offline
+  --rerun-tasks PASS (1m33s, all21tasks executed); dependencyInsight PASS (9s).
+- ALL new checks SUCCESS, observed after completion:
+  Stage6 push: https://github.com/Raul001R/MonDungeons/actions/runs/42577740084
+  Stage6 PR: https://github.com/Raul001R/MonDungeons/actions/runs/42577746180
+  Stage7 push: https://github.com/Raul001R/MonDungeons/actions/runs/42577757512
+- This final validation entry is a local handoff update after the verified pushes;
+  implementation/workflow fix is already published on both branches. No active
+  build/download processes remain. Stage7 gameplay limitations below still apply.
+
 ## Stage 7 failure recovery (2026-11-09)
 - Read AGENTS.md/memory.md throughout. User requested pushing6 and working on7;
   Stage6 pushed7552804. They then reported failed CI. Actual failure was Gradle

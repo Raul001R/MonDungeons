@@ -269,12 +269,16 @@ class DungeonFailureGameTests : FabricGameTest {
                     runs.tick()
                     val battle = BattleRegistry.getBattleByParticipatingPlayer(player)
                     if (battle != null && won.add(battle.battleId)) {
+                        if (won.size == 10) check(Cobblemon.storage.getParty(player).all { it.currentHealth == it.maxHealth }) {
+                            "Party must heal after round nine before the boss, including preserved older configs"
+                        }
                         val challenger = battle.actors.single { player.uuid in it.getPlayerUUIDs() }
                         val trainer = battle.actors.single { player.uuid !in it.getPlayerUUIDs() }
                         val victory = BattleVictoryEvent(battle, listOf(challenger), listOf(trainer), false)
                         CobblemonEvents.BATTLE_VICTORY.post(victory)
                         CobblemonEvents.BATTLE_VICTORY.post(victory)
                         battle.stop()
+                        if (won.size == 9) Cobblemon.storage.getParty(player).forEach { it.currentHealth = 1 }
                     }
                     if (payloads.lastOrNull()?.state == "granted") {
                         check(won.size == 10)

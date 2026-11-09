@@ -6,7 +6,8 @@ import net.fabricmc.loader.api.FabricLoader
 import java.nio.file.Files
 
 data class DungeonRound(val name: String, val trainerId: String, val format: String, val level: Int,
-                        val teamSlots: List<Int>, val skill: Int, val boss: JsonObject?, val appearance: String)
+                        val teamSlots: List<Int>, val skill: Int, val boss: JsonObject?, val appearance: String,
+                        val theme: String? = null, val dialogue: DungeonDialogue = DungeonDialogue())
 
 data class DungeonRoundPlan(val rounds: List<DungeonRound>, val healAfterRounds: Set<Int>,
                             val interRoundDelayTicks: Int, val battleEndGraceTicks: Int,
@@ -45,7 +46,10 @@ data class DungeonRoundPlan(val rounds: List<DungeonRound>, val healAfterRounds:
                 val appearance = data.get("appearance")?.asString ?: if (boss != null) bossAppearance
                     else appearances.get(trainerId)?.asString ?: fallbackAppearance
                 require(appearance.matches(Regex("[a-z0-9_.-]+:[a-z0-9_./-]+"))) { "Invalid trainer appearance $appearance" }
-                DungeonRound(data.get("name").asString, trainerId, format, level, slots, skill, boss?.deepCopy(), appearance)
+                val theme = data.get("type")?.asString
+                require(theme == null || theme in DungeonEncounterRoster.TYPES) { "Unknown round type $theme" }
+                DungeonRound(data.get("name").asString, trainerId, format, level, slots, skill, boss?.deepCopy(), appearance,
+                    theme, DungeonDialogue.parse(data.getAsJsonObject("dialogue")))
             }
             require(rounds.isNotEmpty())
             require(rounds.zipWithNext().all { (a, b) -> a.level <= b.level }) { "Rounds must progress in level" }
