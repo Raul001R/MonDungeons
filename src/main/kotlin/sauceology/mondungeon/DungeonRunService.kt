@@ -19,13 +19,15 @@ object DungeonRunService {
         ServerLifecycleEvents.SERVER_STOPPING.register {
             try { runs?.close() } finally { runs = null }
         }
+        ServerLifecycleEvents.SERVER_STOPPED.register { DungeonTrainer.clearLive() }
         ServerTickEvents.END_SERVER_TICK.register { runs?.tick() }
         ServerPlayConnectionEvents.DISCONNECT.register { handler, _ -> runs?.disconnect(handler.player.uuid) }
+        ServerPlayConnectionEvents.JOIN.register { handler, _, _ -> runs?.rejoin(handler.player) }
         ServerLivingEntityEvents.AFTER_DEATH.register { entity, _ ->
             if (entity is ServerPlayer) runs?.disconnect(entity.uuid)
         }
         ServerEntityEvents.ENTITY_LOAD.register { entity, _ ->
-            if (entity is NPCEntity && DungeonTrainer.TEMPORARY_TAG in entity.tags) entity.discard()
+            if (entity is NPCEntity && DungeonTrainer.TEMPORARY_TAG in entity.tags && !DungeonTrainer.isLive(entity.uuid)) entity.discard()
         }
         CommandRegistrationCallback.EVENT.register { dispatcher, _, _ ->
             dispatcher.register(literal("setdungeon").requires { it.hasPermission(2) }.executes { context ->

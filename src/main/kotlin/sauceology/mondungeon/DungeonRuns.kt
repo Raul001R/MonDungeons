@@ -13,13 +13,16 @@ import java.util.UUID
 
 data class ActiveDungeon(val playerUuid: UUID, val keyTierId: String, val returnPos: DungeonPosition,
                          val key: ItemStack, val table: DungeonRewardTable, var currentRound: Int = 1,
-                         var payout: RolledDungeonReward? = null, var spinRemaining: Int = 0)
+                         var payout: RolledDungeonReward? = null, var spinRemaining: Int = 0,
+                         val runId: UUID = UUID.randomUUID())
 private data class RaidOffer(val token: String, val hand: InteractionHand, val key: ItemStack)
 
 /** One instance per server. Network callbacks and lifecycle events run on its server thread. */
-class DungeonRuns(private val server: MinecraftServer) {
+class DungeonRuns(private val server: MinecraftServer,
+    internal val recovery: DungeonReturnRecovery = DungeonReturnRecovery(server),
+    private val rewardTable: (DungeonKeyTier) -> DungeonRewardTable = { DungeonLootData.tables.getValue(it.lootTableId) },
+    private val presentation: DungeonPresentation = NetworkDungeonPresentation) {
     private val config = DungeonArenaConfig()
-    private val recovery = DungeonReturnRecovery(server)
     private val offers = mutableMapOf<UUID, RaidOffer>()
     private val logger = LoggerFactory.getLogger("mondungeons/runs")
     private var ticksUntilRetry = 0
@@ -50,12 +53,12 @@ class DungeonRuns(private val server: MinecraftServer) {
         val held = player.getItemInHand(offer.hand)
         if (held.isEmpty || !ItemStack.isSameItemSameComponents(held, offer.key)) return tell(player, "key_changed")
         val tier = DungeonItems.tier(held) ?: return tell(player, "key_changed")
-        val table = DungeonLootData.tables.getValue(tier.lootTableId)
+        val table = rewardTable(tier)
         try { DungeonPayout.validate(table) } catch (exception: Exception) {
             logger.error("Dungeon reward table {} cannot pay every advertised prize", table.id, exception)
             return tell(player, "rewards_unavailable")
         }
-        if (!net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking.canSend(player, RaidPayoutPayload.TYPE)) {
+        if (!presentation.available(player)) {
             return tell(player, "ui_unavailable")
         }
         val arena = config.arena ?: return tell(player, "arena_unconfigured")
@@ -69,9 +72,13 @@ class DungeonRuns(private val server: MinecraftServer) {
             return tell(player, "trainers_unavailable")
         }
         val origin = DungeonPosition.capture(player)
+        val run = ActiveDungeon(player.uuid, tier.id, origin, held.copyWithCount(1), table)
         try {
-            if (!admission.enter(ActiveDungeon(player.uuid, tier.id, origin, held.copyWithCount(1), table),
-                    remember = { recovery.remember(player.uuid, origin) },
+            if (!admission.enter(run,
+                    remember = {
+                        recovery.remember(player.uuid, origin, run.key, run.runId)
+                        DungeonDurableFiles.savePlayer(player)
+                    },
                     move = { move(player, arena) }, rollback = { restore(player.uuid) })) {
                 return tell(player, "occupied")
             }
@@ -123,6 +130,16 @@ class DungeonRuns(private val server: MinecraftServer) {
         // The pre-teleport journal remains until a live player can be restored.
     }
 
+    fun keyToRetain(player: ServerPlayer): ItemStack? {
+        val entry = recovery.record(player.uuid) ?: return null
+        if ((player as DungeonPayoutReceipt).mondungeonsGetReceipt() == entry.runId.toString()) return null
+        return entry.key
+    }
+
+    fun rejoin(player: ServerPlayer) {
+        if (active?.playerUuid != player.uuid) restore(player.uuid)
+    }
+
     fun tick() {
         active?.let { run ->
             val player = server.playerList.getPlayer(run.playerUuid)
@@ -137,7 +154,8 @@ class DungeonRuns(private val server: MinecraftServer) {
             lastBroadcastOccupied = occupied
             server.playerList.players.forEach { player ->
                 if (net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking.canSend(player, RaidAvailabilityPayload.TYPE)) {
-                    net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking.send(player, RaidAvailabilityPayload(occupied))
+                    try { net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking.send(player, RaidAvailabilityPayload(occupied)) }
+                    catch (exception: Exception) { logger.warn("Could not update dungeon availability for {}", player.uuid, exception) }
                 }
             }
         }
@@ -149,9 +167,10 @@ class DungeonRuns(private val server: MinecraftServer) {
     fun close() {
         closing = true
         admission.clear()
-        gauntlet.close()
-        offers.clear()
-        recovery.pending().keys.forEach(::restore)
+        try { gauntlet.close() } finally {
+            offers.clear()
+            recovery.pending().keys.forEach(::restore)
+        }
     }
 
     private fun finishGauntlet(playerId: UUID, complete: Boolean) {
@@ -161,9 +180,10 @@ class DungeonRuns(private val server: MinecraftServer) {
         if (complete && player != null) {
             try {
                 run.payout = DungeonPayout.roll(run.table, player)
+                recovery.preparePayout(playerId, run.payout?.pokemon?.uuid)
                 run.spinRemaining = config.spinTicks
                 val prize = requireNotNull(run.payout)
-                net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking.send(player,
+                presentation.show(player,
                     RaidPayoutPayload(prize.label, prize.group, config.spinTicks, "spinning",
                         run.table.rewards.map { it.definition.get("label")?.asString ?: "Reward" }))
                 return // Keep the global lock until the server grants the prize.
@@ -185,7 +205,7 @@ class DungeonRuns(private val server: MinecraftServer) {
         var result = "failed"
         try {
             if (player != null) {
-                val granted = prize.grant(player, run.key)
+                val granted = DungeonPayoutCommit.grant(player, run.key, prize, run.runId)
                 result = if (granted) "granted" else "failed"
                 if (granted) player.sendSystemMessage(Component.translatable("message.mondungeons.reward_granted", prize.label))
                 else tell(player, "payout_failed")
@@ -199,19 +219,22 @@ class DungeonRuns(private val server: MinecraftServer) {
         }
         // Send after teleport so a dimension's loading screen cannot hide the final result.
         if (player != null) try {
-            net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking.send(player,
+            presentation.show(player,
                 RaidPayoutPayload(prize.label, prize.group, 0, result, emptyList()))
         } catch (exception: Exception) { logger.warn("Could not show payout result for {}", run.playerUuid, exception) }
     }
 
     private fun restore(playerId: UUID): Boolean {
-        val origin = recovery.pending()[playerId] ?: return true
+        val entry = recovery.record(playerId) ?: return true
         val player = server.playerList.getPlayer(playerId) ?: return false
         if (!player.isAlive) return false
         return try {
-            if (!move(player, origin)) return false
+            if (!move(player, entry.origin)) return false
+            if ((player as DungeonPayoutReceipt).mondungeonsGetReceipt() != entry.runId.toString()) {
+                entry.payoutPokemon?.let { DungeonPayoutCommit.removePokemon(player, it) }
+            }
             // Save the restored player before clearing their durable return obligation.
-            server.playerList.saveAll()
+            DungeonDurableFiles.savePlayer(player)
             recovery.forget(playerId)
             tell(player, "returned")
             true
@@ -234,6 +257,7 @@ class DungeonRuns(private val server: MinecraftServer) {
     }
 
     private fun tell(player: ServerPlayer, key: String) {
-        player.sendSystemMessage(Component.translatable("message.mondungeons.$key"))
+        try { player.sendSystemMessage(Component.translatable("message.mondungeons.$key")) }
+        catch (exception: Exception) { logger.warn("Could not show dungeon message to {}", player.uuid, exception) }
     }
 }

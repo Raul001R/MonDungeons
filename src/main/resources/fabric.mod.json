@@ -3,7 +3,7 @@
     "id":  "mondungeons",
     "version":  "${version}",
     "name":  "MonDungeons",
-    "description":  "Rare dungeon keys and a Cobblemon raid trainer gauntlet. Stage five: ten trainer rounds, alternating heals and an oversized boss.",
+    "description":  "Rare dungeon keys, a ten-round Cobblemon trainer gauntlet, tiered rewards and return recovery.",
     "authors":  [
                     "Sauceology"
                 ],

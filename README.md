@@ -2,7 +2,7 @@
 
 Standalone Fabric/Kotlin addon for Minecraft 1.21.1 and Cobblemon 1.8.4.
 
-Stage six registers `mondungeons:dungeon_key` and adds a separate key roll to
+MonDungeons registers `mondungeons:dungeon_key` and adds a separate key roll to
 built-in vanilla `minecraft:chests/*` loot tables. Each newly generated chest has
 a default 1% key chance. Already generated loot is unchanged; datapack-replaced
 chest tables are respected. Using a tiered key opens the MonDungeons odds screen
@@ -176,7 +176,7 @@ Stage 5 gauntlet:
   and unrelated results are ignored. Loss, exit, disconnect, death, ended battles
   without victory, or a failed next-round launch stop the tracked battle, discard
   its NPC, release the lock and return/queue the player through the existing
-  recovery journal. Stage 7 remains the full failure-path audit.
+  recovery journal.
 - Clearing round 10 rolls one prize on the server from the same table shown in
   the menu, then opens the cosmetic spin. After `spinTicks` (default 100 / five
   seconds), the server delivers the prize, consumes one matching key, returns you
@@ -212,6 +212,40 @@ Stage 6 reward configuration:
 - Existing `config/mondungeons/dungeon-loot.json` files are preserved. Update
   their entries explicitly and restart to load changes; bundled JSON changes
   do not overwrite a server owner's configuration.
+
+Stage 7 recovery:
+
+- Loss, an explicit forfeit response, an ended/missing battle with no victory,
+  disconnect, death and server stop abort the attempt and release the global
+  lock. Failed attempts have free retries. A restart never resumes a battle or
+  restores an occupied lock.
+- The overworld `data/mondungeons_returns.dat` journal stores the exact origin,
+  one-key snapshot and run ID before entry. Journal/player checkpoints use
+  compressed NBT, forced temporary-file writes and atomic replacement; IO errors
+  propagate. A failed admission cannot teleport first and save later. Schema1
+  return files from earlier stages are migrated when next written.
+- Offline/dead players keep a pending return. Join and periodic retries restore
+  living players, including after respawn. A missing dimension or failed write
+  retains the obligation and prevents that player from starting again; other
+  players can use the freed slot. Obligations clear only after the returned
+  player's checkpoint is saved.
+- Normal death drops protect exactly one matching run key, then transfer it
+  across respawn. Other keys and inventory items follow normal death rules.
+  `keepInventory`/keep-everything copying does not add another key. Keys the
+  player deliberately removed from their inventory are not duplicated as refunds.
+- Payout saves its receipt with the changed key/item inventory. Caught checkpoint
+  failures roll back inventory, receipt and the created Pokemon. Recovery removes
+  an uncommitted Pokemon by UUID and preserves a committed payout. Cobblemon owns
+  its separate Pokemon storage backend; atomicity across that backend and player
+  files during an abrupt power/process failure inside payout is not guaranteed.
+- Current trainers are tracked in memory so delayed entity-load events cannot
+  mistake a live challenger for a saved leftover. Restarted leftover trainers
+  are discarded. Each live trainer holds a transient entity-ticking chunk ticket,
+  released with that trainer; these tickets do not persist across restart.
+  Cleanup detaches the session before stopping a battle, so late events cannot
+  advance a new run. Native busy-state errors during party recall can delay a
+  retry's challenge up to `transitionTimeoutTicks`; other battle-start errors
+  abort safely. This adds no failure cooldown and never heals the party on entry.
 
 Run `./gradlew.bat runGameTest -PrctCompat=true --offline` for the optional headless
 RCT integration tests. The profile adds pinned RCT 0.19.2-beta, RCT API 0.16.2-beta

@@ -55,7 +55,7 @@ tasks.named('processGametestResources') {
 	def withRct = providers.gradleProperty('rctCompat').map { it.toBoolean() }.getOrElse(false)
 	inputs.property 'rctCompat', withRct
 	filesMatching('fabric.mod.json') {
-		expand dungeonGameTests: withRct ? '"sauceology.mondungeon.DungeonBattleGameTests"' : ''
+		expand dungeonGameTests: withRct ? '"sauceology.mondungeon.DungeonBattleGameTests", "sauceology.mondungeon.DungeonFailureGameTests"' : ''
 	}
 }
 tasks.named('runGameTest') {

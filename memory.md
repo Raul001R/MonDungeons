@@ -1,5 +1,57 @@
 # Agent memory
 
+## Stage 7 failure recovery (2026-11-09)
+- Read AGENTS.md/memory.md throughout. User requested pushing6 and working on7;
+  Stage6 pushed7552804. They then reported failed CI. Actual failure was Gradle
+  distribution download (10s timeout, then504s), before compilation. Pushed
+  17e5e6d for retries and5a457d5 for official release-asset API download, pinned
+  SHA256 and JDK21/25 setup. CI run42571847204 SUCCESS:
+  https://github.com/Raul001R/MonDungeons/actions/runs/42571847204
+- Primary branch feature/stage-seven-failure-paths fast-forwarded to5a457d5.
+  Isolated worktree build/stage-six-ci still checks out feature/stage-six-payout.
+  No Stage7 push requested/performed. Keep feature branches; never commit main.
+- Return journal now writes compressed NBT atomically with forced temp-file data,
+  propagates IO failures and changes memory only after disk commit. Schema2 stores
+  origin, original one-key snapshot, runUUID and candidate payout PokemonUUID;
+  nonempty schema1 journals remain readable. No active lock/battle is persisted.
+- Admission saves journal/player before teleport. Return restores exact dimension/
+  Vec3/yaw/pitch, saves player checkpoint, then forgets journal. Join and tick
+  retries handle offline/dead players after login/respawn. Lock releases even if
+  cleanup fails; that player's unresolved return blocks their re-entry only.
+- Inventory.dropAll mixin protects exactly1matching run key in finally. Respawn
+  mixin transfers it once; keepInventory/keep-everything does not duplicate.
+  Other items/keys drop normally. Deliberately removed keys are not refunded.
+- Payout receipt persists with key/item inventory in atomic player NBT. Caught
+  write failures restore inventory/receipt and remove created Pokemon. Recovery
+  removes uncommitted Pokemon by UUID but retains a committed payout. Cobblemon
+  owns separate Pokemon storage; abrupt power/process loss inside cross-store
+  payout is NOT guaranteed atomic. README explicitly documents this limit.
+- Found real NPC chunk-unload issue through coordinator tests. Track live NPCs
+  to protect delayed ENTITY_LOAD, and hold transient entity-ticking chunk tickets
+  until each NPC is discarded. Tickets are never persisted; old loaded NPCs are
+  removed after restart. Error-safe cancellation detaches before battle stop.
+- Forfeits use native persistent forfeitedBy plus response detection, and ended/
+  missing battle fallback with configured grace. BusyError-only recall/startup
+  retries are bounded by transitionTimeoutTicks. Keep FREE RETRIES/no cooldown;
+  healing remains2/4/6/8 and boss/difficulty data unchanged.
+- Added DungeonPresentation and injected journal/reward-table seams for actual
+  DungeonRuns tests with a verified diamond fixture and headless networking.
+- FINAL Minecraft suite10/10 PASS at01:52:58 (runGameTest -PrctCompat=true --offline,
+  build2m21s). Snapshot build/stage-seven-failure-tests.log. Covers actual10native
+  rounds/coordinator -> roll/spin ->4diamonds -> exactly1key consumed -> exact
+  return/lock free, duplicate synthetic victories, actual loss, no-victory ended
+  battle, native forfeit marker, disconnect/rejoin, stop/idempotent close, death
+  drop/respawn mixins, cold journal recovery, legacy migration, IO failure rollback,
+  committed/uncommitted Pokemon and receipt persistence. Earlier ephemeral
+  response test also passed. These are headless synthetic victories, not a human
+  playthrough, real kill-process experiment or full addon-provider-pack check.
+- Final packaging build pending below. Output build/libs/mondungeons-1.0.0.jar.
+  Mod metadata/init log and README updated. Stage7 commit pending validation.
+- Final build --offline PASS (29s); fast admission/round checks PASS. Remapped
+  jar inspection confirms strict-file, death/respawn mixins, payout receipt/commit
+  and presentation classes. Memory-only backup stash verified/restored and dropped.
+  No processes remain running. Stage7 ready for local/manual pack testing; the
+  documented abrupt cross-store crash limit remains. Commit follows this handoff.
 ## Stage 6 CI download failure (2026-11-09)
 - Run42571132261 retried4times but services.gradle.org returned HTTP504; both
   downloads.gradle.org and GitHub browser download URL also returned504 in
