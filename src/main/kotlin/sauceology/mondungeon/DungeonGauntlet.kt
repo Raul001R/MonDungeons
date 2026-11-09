@@ -10,6 +10,8 @@ import com.cobblemon.mod.common.battles.BattleFormat
 import com.cobblemon.mod.common.battles.BattleRegistry
 import com.cobblemon.mod.common.battles.SuccessfulBattleStart
 import com.cobblemon.mod.common.battles.ForfeitActionResponse
+import com.cobblemon.mod.common.battles.ErroredBattleStart
+import com.cobblemon.mod.common.battles.BusyError
 import com.cobblemon.mod.common.entity.npc.NPCEntity
 import com.cobblemon.mod.common.pokemon.Pokemon
 import net.minecraft.network.chat.Component
@@ -83,7 +85,14 @@ class DungeonGauntlet(private val server: MinecraftServer, private val onRound: 
                 .copy(adjustLevel = 0)
             // Explicitly disable virtual parties and pre-battle healing: odd-round attrition must persist.
             val started = BattleBuilder.pvn(player, npc, battleFormat = format, cloneParties = false, healFirst = false)
-            check(started is SuccessfulBattleStart) { "Cobblemon refused dungeon round $number: $started" }
+            if (started is ErroredBattleStart && started.errors.all { it is BusyError } &&
+                server.tickCount.toLong() - current.challengeAt < current.prepared.plan.transitionTimeoutTicks) {
+                return // A retry may arrive while Cobblemon is still recalling the previous party.
+            }
+            check(started is SuccessfulBattleStart) {
+                "Cobblemon refused dungeon round $number: " + if (started is ErroredBattleStart)
+                    started.errors.joinToString { "${it.javaClass.simpleName}: ${it.getMessageFor(player).string}" } else started
+            }
             startedBattle = started.battle
             current.round = DungeonBattle(started.battle, npc)
             current.challenger = null
@@ -92,7 +101,7 @@ class DungeonGauntlet(private val server: MinecraftServer, private val onRound: 
                 current.prepared.plan.rounds.size, definition.name))
         } catch (exception: Exception) {
             startedBattle?.let { if (!it.ended) it.stop() }
-            npc.discard()
+            discard(npc)
             throw exception
         }
     }
@@ -101,6 +110,7 @@ class DungeonGauntlet(private val server: MinecraftServer, private val onRound: 
         val current = session ?: return
         if (current.progress.expectedBattleId != event.battle.battleId) return
         if (event.winners.none { current.player in it.getPlayerUUIDs() } ||
+            event.battle.forfeitedBy?.getPlayerUUIDs()?.contains(current.player) == true ||
             event.battle.actors.any { current.player in it.getPlayerUUIDs() && it.responses.any { response -> response is ForfeitActionResponse } }) {
             current.lost = true
             return
@@ -117,11 +127,18 @@ class DungeonGauntlet(private val server: MinecraftServer, private val onRound: 
             if (player == null || !player.isAlive) return fail(current)
             val now = server.tickCount.toLong()
             current.challenger?.let {
-                if (it.isRemoved) return fail(current)
+                if (it.isRemoved) {
+                    logger.warn("Dungeon challenger {} disappeared before round {}: reason={}, NPC={}, player={}",
+                        it.uuid, current.progress.currentRound, it.removalReason, it.position(), player.position())
+                    return fail(current)
+                }
                 if (now >= current.challengeAt) challenge(current, player)
                 return
             }
             val tracked = current.round ?: return fail(current)
+            if (tracked.battle.forfeitedBy?.getPlayerUUIDs()?.contains(current.player) == true ||
+                tracked.battle.actors.any { current.player in it.getPlayerUUIDs() &&
+                    it.responses.any { response -> response is ForfeitActionResponse } }) return fail(current)
             if (tracked.npc.isRemoved && current.pending == null) return fail(current)
             val pending = current.pending
             if (pending != null) {
@@ -129,7 +146,7 @@ class DungeonGauntlet(private val server: MinecraftServer, private val onRound: 
                 if (elapsed > current.prepared.plan.transitionTimeoutTicks) return fail(current)
                 if (!tracked.battle.ended || BattleRegistry.getBattleByParticipatingPlayer(player) != null ||
                     elapsed < current.prepared.plan.interRoundDelayTicks) return
-                tracked.npc.discard()
+                discard(tracked.npc)
                 current.round = null
                 current.pending = null
                 if (pending.heal) {
@@ -154,23 +171,25 @@ class DungeonGauntlet(private val server: MinecraftServer, private val onRound: 
     }
 
     private fun fail(current: GauntletSession) {
-        cancel()
-        onFailure(current.player)
+        try { cancel() } finally { onFailure(current.player) }
     }
 
     fun cancel() {
         val current = session ?: return
         session = null // Detach before stopping the battle; resulting events cannot advance another run.
-        current.challenger?.discard()
+        current.challenger?.let(::discard)
         current.round?.let { tracked ->
             try { if (!tracked.battle.ended) tracked.battle.stop() }
             catch (exception: Exception) { logger.error("Could not stop dungeon battle", exception) }
-            finally { tracked.npc.discard() }
+            finally { discard(tracked.npc) }
         }
     }
 
     fun close() {
-        victories.unsubscribe()
-        cancel()
+        try { victories.unsubscribe() } finally { cancel() }
+    }
+
+    private fun discard(npc: NPCEntity) {
+        try { DungeonTrainer.discard(npc) } catch (exception: Exception) { logger.error("Could not discard dungeon trainer", exception) }
     }
 }

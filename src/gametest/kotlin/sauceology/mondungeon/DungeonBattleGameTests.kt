@@ -196,6 +196,8 @@ class DungeonBattleGameTests : FabricGameTest {
             val spawned = helper.level.getEntitiesOfClass(com.cobblemon.mod.common.entity.npc.NPCEntity::class.java,
                 net.minecraft.world.phys.AABB(pos).inflate(12.0)).single { DungeonTrainer.TEMPORARY_TAG in it.tags }
             check(spawned.npc.id == MonDungeons.id("dungeon_trainer")) { "Client must receive a registered NPC class" }
+            net.fabricmc.fabric.api.event.lifecycle.v1.ServerEntityEvents.ENTITY_LOAD.invoker().onLoad(spawned, helper.level)
+            check(!spawned.isRemoved) { "Delayed entity tracking must not delete the current challenger" }
             check(spawned.forcedResourceIdentifier.toString() == plan.rounds.first().appearance)
             check(com.cobblemon.mod.common.api.npc.NPCClasses.getByIdentifier(spawned.npc.id) != null)
         } catch (exception: Throwable) { cleanup(); throw exception }
