@@ -1,6 +1,14 @@
 # Agent memory
 
 ## Stage 6 CI download failure (2026-11-09)
+- Run42571132261 retried4times but services.gradle.org returned HTTP504; both
+  downloads.gradle.org and GitHub browser download URL also returned504 in
+  direct checks. Official GitHub release asset API418398387 responds200 with
+  binary archive140320662bytes. CI now fetches via that API, verifies official
+  SHA256bafc141b619ad6350fd975fc903156dd5c151998cc8b058e8c1044ab5f7b031f,
+  unpacks and uses that same Gradle9.5.1. Wrapper checksum also pinned. CI sets
+  up JDK21+25 explicitly and passes both toolchain env paths to Gradle. New run
+  must be observed to completion before claiming CI fixed.
 - Stage6 payout pushed as7552804. User reported failed build; read actual Actions
   job129006699783/run42570560870. Gradle distribution download timed out at10s
   with one attempt; no source compilation started. Detailed log captured in
