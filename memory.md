@@ -1,5 +1,111 @@
 # Agent memory
 
+## Mega Showdown source lookup (2026-11-09)
+- User asked to obtain the item names from the mod instead of asking them to
+  list everything. Read AGENTS.md/memory.md and consulted the official upstream
+  yajatkaul/CobblemonMegaShowdown, commit06b995dcf8ed8d0e51a65e206865838a184daeee.
+  gradle.properties identifies1.3.3+1.8.4+1.21.1-release, matching our MC/Cobblemon.
+- Found official generated data/mega_showdown/tags/item/mega_stone.json (86
+  members) and z_crystal.json (35). Actual item registration source is
+  common/src/main/java/com/github/yajatkaul/mega_showdown/item/MegaShowdownItems.java.
+  Reference snapshots saved under ignored build/mega-showdown-reference.
+- Replaced both TODO set entries with itemTag mega_showdown:mega_stone and
+  mega_showdown:z_crystal, in bundled and existing local run config. Tags use
+  actual installed membership and allow datapack additions; no names guessed.
+  Counts/weights/odds unchanged. Both JSON files parse, tags and weights checked.
+- This supersedes prior pending member-list requests. No TODO reward entries
+  remain in bundled JSON. Addon providers are still absent locally; source
+  lookup is not a live registry/playthrough verification. Actual pack must pass
+  /monDungeons checkrewards. README updated. Jar rebuild pending.
+- Also migrated only the older verified Fossil/Poke Snack TODO fields in the
+  existing local test config to match the previously resolved bundled definitions;
+  preserved counts, weights, odds and other settings. No local TODO remains.
+- Build --offline PASS (43s), fast admission/round checks PASS. Inspected remapped
+  jar's dungeon-loot.json: both official tags present and no TODO placeholders.
+  Output build/libs/mondungeons-1.0.0.jar. No new Minecraft runtime run needed for
+  this data-only change; addon runtime registry validation remains outstanding.
+
+## User-supplied reward IDs (2026-11-09)
+- Follow-up user confirmed Tera Shards follow mega_showdown:<type>_tera_shard,
+  Gold Bottle Cap is obc:bottle_cap_gold, Silver Bottle Cap is obc:bottle_cap.
+  Applied to bundled and existing local test JSON. Tera entry now chooses among
+  18 standard type shards, uniformly; count2/weight8 and all group odds unchanged.
+  Both JSON files parse and shard counts/weights were checked. These are supplied
+  IDs, still not verified against the absent addon registries. No jar rebuild.
+  Only Mega Stone and Z-Crystal member definitions remain TODO. Their naming
+  patterns are recorded below; exact member lists/tags are still requested.
+- Re-read AGENTS.md and memory.md. User supplied mega_showdown:wishing_star
+  and legendarymonuments:golem_scrap; applied both to bundled dungeon-loot.json.
+  These are user-confirmed, not runtime-verified here (providers absent).
+- Mega Stones follow mega_showdown:<stone name>, Z-Crystals
+  mega_showdown:<name>_z per user. These are naming patterns, not a complete
+  registry member list; preserve set placeholders until exact lists/tags arrive.
+- Last supplied value was just mega_showdown: (incomplete). Asked whether this
+  was for Tera Shards, for the complete ID/pattern, and for both bottle-cap IDs.
+  Also requested stone/crystal member lists or tags; do not invent item suffixes.
+- Counts, weights and odds unchanged. Stage6 still needs actual-pack validation;
+  no new build/runtime claims for this data-only update.
+- Applied the same two exact placeholder replacements to the existing local
+  run/config/mondungeons/dungeon-loot.json, preserving all other owner settings.
+  Both JSON files parse successfully and contain the supplied IDs. No jar rebuild.
+
+## Stage 6 payout (2026-11-08, in progress)
+- User asked whether Stage6 was done, then approved completing it first. Stage7
+  is paused as a task switch; no Stage7 source changes were made. Stage5 was
+  committed/pushed as c1daa2f to feature/stage-five-gauntlet. Current working
+  branch feature/stage-six-payout, created from that commit.
+- Re-read AGENTS.md and memory.md. One selection per clear remains the design;
+  an item selection can grant its configured stack. Keep free failed-run retries.
+- Implementing server-side weighted selection from the exact menu table, concrete
+  Pokemon/shiny creation, S2C cosmetic spin, server timer, grant then one-key
+  consumption, origin restoration and lock release. No client claim/roll packet.
+- Seven TODO item IDs remain unresolved. Asked for exact IDs/providers; do not
+  replace/remove prizes or reweight odds. Validate every positive-probability
+  reward before admission and reject unavailable tables while retaining the key.
+- Build/runtime checks pending. Do not claim Stage6 shipped until validation and
+  reward configuration are resolved. Stage7 crash-transaction/death hardening
+  remains future work.
+- User clarified Mega Stones, Z-Crystals and Tera Shards are item SETS: added
+  mutually exclusive item/items/itemTag forms, uniform choice within a prize,
+  unchanged entry/group probability. Golem Scrap and Tera Shard must stay TODO.
+  Search namespaces mega_showdown, zamega, cobblemon and cobblefurnies. JEI and
+  Mega Showdown/Zamega are absent from this dev runtime/cache, so do not claim
+  JEI confirmation. Cached Cobblefurnies jar contains no matching snack/scrap/
+  fossil/wishing entries. Actual Cobblemon registry confirms poke_snack and all
+  15 fossil IDs; bundled config now uses those, fossils as a random set.
+- Actual registry also rejects draft cobblemon:gold_bottle_cap and
+  cobblemon:silver_bottle_cap. These need exact installed-pack IDs too. Other
+  configured non-TODO items validated. Admin /monDungeons checkrewards reports
+  all unavailable entries with labels. Existing owner config is never replaced.
+- Initial build PASS and Minecraft suite5/5 PASS at21:37:50. Payout test checks
+  deterministic probability intervals, item-set/tag validation, item stacks,
+  exact one-key consumption, duplicate grant refusal, full inventory, offhand
+  and random shiny Pokemon. Follow-up PC overflow check and final UI/timer
+  changes are being validated; no full human playthrough claimed.
+- Follow-up Minecraft suite5/5 PASS at21:41:04 including full-party -> PC shiny
+  delivery. Snapshot build/stage-six-payout-tests.log. Native ten-round tests
+  still use synthetic victory events; payout delivery tests are separate from
+  that gauntlet test. Do not claim a complete human or end-to-end network run.
+- Final reward screen visually checked at854x480. Purple/gold rounded panel,
+  easing card reel, center prize marker, claimed state and Esc hint fit. Snapshot
+  build/stage-six-reward-screen.png; client log stage-six-reward-preview.log.
+  Only result preview inspected; no user world opened. Preview22130 stopped.
+- Reward lock stays held through spin, delivery and return; finished payload is
+  sent after teleport. Missing key/full inventory fails before mutation. Grant
+  objects refuse a second delivery. Unexpected errors have a separate message
+  rather than incorrectly claiming the key was kept after a partial exception.
+- Final build pending below. No Stage6 commit/push requested or performed yet.
+  Live readiness remains blocked by five TODO prize definitions plus two draft
+  bottle-cap IDs absent from this runtime. Resolve with the actual pack registry;
+  do not silently remove them. Stage7 not resumed.
+- Final build --offline PASS (49s); admission/round checks PASS. Remapped jar
+  inspection confirms DungeonPayout, RolledDungeonReward, RaidPayoutPayload,
+  RaidSpinScreen and bundled dungeon-loot.json. Output build/libs/mondungeons-1.0.0.jar.
+  Later changes after the5/5 runtime suite were result-send ordering/error text,
+  complete spin duration, a defensive overfull-stack capacity clamp and cosmetic
+  reel rendering; these compiled in the final build. End-to-end live payout and
+  Stage7 durability/failure checks remain pending, alongside actual-pack IDs.
+
 ## Trainer cast, complete rewards and branding (2026-11-08, in progress)
 - Re-read AGENTS.md and memory.md. User requested varied NPC looks, all JSON
   prizes represented, then push and start Stage7. Clarified reward request is

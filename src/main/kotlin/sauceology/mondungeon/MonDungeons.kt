@@ -18,7 +18,7 @@ object MonDungeons : ModInitializer {
 		RaidUi.register()
 		DungeonRunService.register()
 		DungeonChestLoot.register()
-		LOGGER.info("MonDungeons stage five initialized: {} key tiers, {} reward tables", DungeonLootData.tiers.size, DungeonLootData.tables.size)
+		LOGGER.info("MonDungeons stage six initialized: {} key tiers, {} reward tables", DungeonLootData.tiers.size, DungeonLootData.tables.size)
 	}
 
 	fun id(path: String): ResourceLocation

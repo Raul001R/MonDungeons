@@ -11,6 +11,7 @@ object RaidUi {
     fun register() {
         PayloadTypeRegistry.playS2C().register(RaidOddsPayload.TYPE, RaidOddsPayload.CODEC)
         PayloadTypeRegistry.playS2C().register(RaidAvailabilityPayload.TYPE, RaidAvailabilityPayload.CODEC)
+        PayloadTypeRegistry.playS2C().register(RaidPayoutPayload.TYPE, RaidPayoutPayload.CODEC)
         PayloadTypeRegistry.playC2S().register(RaidStartPayload.TYPE, RaidStartPayload.CODEC)
         ServerPlayNetworking.registerGlobalReceiver(RaidStartPayload.TYPE) { payload, context ->
             context.server().execute { DungeonRunService.runs?.start(context.player(), payload.token) }

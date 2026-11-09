@@ -36,7 +36,7 @@ object RaidRewardMenu {
             val random = Regex("(^|\\s)random(\\s|$)", RegexOption.IGNORE_CASE).containsMatchIn(spec)
             val shiny = Regex("(^|\\s)shiny=true(\\s|$)", RegexOption.IGNORE_CASE).containsMatchIn(spec)
             val kind = when { !pokemon -> "item"; random && shiny -> "random_shiny"; random -> "random_pokemon"; shiny -> "shiny_pokemon"; else -> "pokemon" }
-            RaidRewardOption(data.get("label")?.asString ?: if (pokemon) spec else data.get("item").asString,
+            RaidRewardOption(data.get("label")?.asString ?: if (pokemon) spec else data.toString(),
                 kind, if (pokemon) 1 else data.get("count").asInt, reward.probability)
         }
         RaidOddsEntry(group.id, group.probability, group.examples, options)
