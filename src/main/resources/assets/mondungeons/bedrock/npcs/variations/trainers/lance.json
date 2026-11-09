@@ -1,0 +1,17 @@
+{
+    "name":  "mondungeons:trainers/lance",
+    "order":  0,
+    "variations":  [
+                       {
+                           "aspects":  [
+
+                                       ],
+                           "layers":  [
+
+                                      ],
+                           "model":  "cobblemon:trainer.geo",
+                           "poser":  "cobblemon:standard",
+                           "texture":  "rctmod:textures/trainers/single/elite_four_lance_0057.png"
+                       }
+                   ]
+}

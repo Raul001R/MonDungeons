@@ -1,0 +1,17 @@
+{
+    "name":  "mondungeons:trainers/koga",
+    "order":  0,
+    "variations":  [
+                       {
+                           "aspects":  [
+
+                                       ],
+                           "layers":  [
+
+                                      ],
+                           "model":  "cobblemon:trainer.geo",
+                           "poser":  "cobblemon:standard",
+                           "texture":  "rctmod:textures/trainers/single/leader_koga_01a2.png"
+                       }
+                   ]
+}

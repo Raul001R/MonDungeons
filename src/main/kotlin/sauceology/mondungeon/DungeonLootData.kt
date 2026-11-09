@@ -9,8 +9,9 @@ import java.nio.file.Files
 data class DungeonKeyTier(val id: String, val chestWeight: Int, val lootTableId: ResourceLocation)
 
 /** Custom reward tables support both items and Pokemon; these are not vanilla item-only loot tables. */
-data class DungeonReward(val definition: JsonObject, val probability: Double)
-data class DungeonRewardTable(val id: ResourceLocation, val rewards: List<DungeonReward>)
+data class DungeonReward(val definition: JsonObject, val probability: Double, val groupId: String)
+data class DungeonRewardGroup(val id: String, val probability: Double, val examples: List<String>)
+data class DungeonRewardTable(val id: ResourceLocation, val rewards: List<DungeonReward>, val groups: List<DungeonRewardGroup>)
 
 object DungeonLootData {
     val tiers: Map<String, DungeonKeyTier>
@@ -54,10 +55,16 @@ object DungeonLootData {
                     require(type in setOf("item", "pokemon"))
                     require(reward.get(if (type == "item") "item" else "spec").asString.isNotBlank())
                     if (type == "item") require(reward.get("count").asInt > 0)
-                    DungeonReward(reward.deepCopy(), chance / 100.0 * weights[index] / total)
+                    DungeonReward(reward.deepCopy(), chance / 100.0 * weights[index] / total, group)
                 }
             }
-            loadedTables[tableId] = DungeonRewardTable(tableId, rewards)
+            val summaries = odds.map { (group, chance) ->
+                DungeonRewardGroup(group, chance.asDouble / 100.0, groups.getAsJsonArray(group).map {
+                    val reward = it.asJsonObject
+                    reward.get("label")?.asString ?: reward.get(if (reward.get("type").asString == "item") "item" else "spec").asString
+                })
+            }
+            loadedTables[tableId] = DungeonRewardTable(tableId, rewards, summaries)
             id to DungeonKeyTier(id, weight, tableId)
         }
         require(tiers.isNotEmpty()) { "At least one dungeon key tier is required" }

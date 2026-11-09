@@ -1,0 +1,17 @@
+{
+    "name":  "mondungeons:trainers/cynthia",
+    "order":  0,
+    "variations":  [
+                       {
+                           "aspects":  [
+
+                                       ],
+                           "layers":  [
+
+                                      ],
+                           "model":  "cobblemon:trainer.geo",
+                           "poser":  "cobblemon:standard",
+                           "texture":  "rctmod:textures/trainers/single/champion_cynthia_03a5.png"
+                       }
+                   ]
+}

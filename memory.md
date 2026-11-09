@@ -1,5 +1,199 @@
 # Agent memory
 
+## Trainer cast, complete rewards and branding (2026-11-08, in progress)
+- Re-read AGENTS.md and memory.md. User requested varied NPC looks, all JSON
+  prizes represented, then push and start Stage7. Clarified reward request is
+  visibility: the random shiny option was missing from the rarity hover. No
+  authorization to implement Stage6 payout in this turn; keep that unfinished.
+- Replaced standard/Steve appearance with ten RCT-backed trainer skins (Brock,
+  Misty, Surge, Erika, Koga, Sabrina, Blaine, Lance, Cynthia, Red boss). Reuses
+  installed RCT assets via custom Cobblemon trainer variations; does not copy
+  vendor textures or add a hard dependency. Appearance mapping/boss/fallback
+  live in dungeon-rounds.json; old configs use bundled mapping defaults.
+- Reward payload now includes every group label and every option's label, count,
+  kind and exact per-run chance. No take(3) cap on transmitted prizes. Hover
+  includes all options, and clickable/focusable View all rows open a paginated
+  catalogue. Random shiny Pokemon has an explicit type description there.
+  Catalogue keeps server lock updates synchronized with its parent menu.
+- User interrupted build159; checked no workspace Gradle wrapper remains running.
+  User then requested command/UI branding monDungeons. Root is /monDungeons,
+  lowercase /mondungeons alias; removed old /raiddungeon registration. Preserved
+  /setdungeon shortcut. Menu title MONDUNGEONS; visible messages/docs renamed.
+  This user instruction overrides the UI spec's previous RAID DUNGEON title.
+- Need finish compile/integration checks and catalogue visual check, commit/push
+  Stage5 branch, then create a Stage7 branch and audit failure paths. Stage6 payout
+  is still absent; Stage7 claims must distinguish current gauntlet safety from
+  future payout-transaction safety. JSON TODO reward IDs remain unresolved.
+- Validation completed: build PASS; RCT integration suite4/4 PASS at20:54:00.
+  Checks all ten appearance definitions and installed texture assets, full22-option
+  catalogue including random_shiny, packet round trips, command roots/aliases and
+  native gauntlet. Snapshot build/stage-five-cast-catalogue-tests.log.
+- Actual catalogue UI inspected: all5 Jackpot entries visible including Random
+  shiny Pokemon, all7 Rare entries/counts visible, parent MONDUNGEONS branding and
+  View all controls work. Screenshots build/mondungeons-jackpot-catalogue.png and
+  build/mondungeons-menu-branding.png. No user world opened by preview.
+- User chose KEEP FREE RETRIES for Stage7. Do not add a failure cooldown.
+- Next: final jar, commit/push Stage5 then Stage7 branch. Read-only audit already
+  found vanilla SavedData.save swallows IOExceptions; strict return journaling and
+  death-inventory key retention need attention. Do not claim Stage7 complete yet.
+
+## Spec-driven raid menu replacement (2026-11-08)
+- Read AGENTS.md, memory.md and user-supplied dungeon-ui-spec.md before edits.
+  User rejected the previous item-list/sidebar design. This spec is now the UI
+  source of truth; preserve the user's untracked spec file.
+- New menu: centered rounded purple panel (~460 GUI units), exact RAID DUNGEON /
+  your odds this run title, X, colored key glyph/name/tier, four reward-tier rows
+  in Jackpot/Rare/Uncommon/Common order, literal proportional bars, green START
+  RUN and round-count footer. Examples are hidden only when compact rows cannot
+  fit them. Removed individual-item pagination/sidebar from this screen.
+- Reward tables now retain group summaries derived from the SAME key tierOdds
+  and rewardTiers used to normalize final item probabilities. UI payload carries
+  group chances/examples, actual key display name, round count and occupied state.
+  No separate hardcoded odds. Server remains authoritative.
+- Added S2C availability payload and broadcasts on global active-lock changes;
+  open menu shows disabled DUNGEON IN USE while occupied and re-enables on release.
+  Server still revalidates the single-use Start token/key/lock before entry.
+- Bars use literal percentages (not eased or given a cosmetic minimum width).
+  Palette follows spec hex values. Compact layout prioritizes all four tiers.
+- Build PASS; new RCT GameTest suite PASS (3/3 at17:04:04) including source-of-truth
+  group odds/examples for every key and packet round trips for free/occupied states.
+  Existing native ten-round/healing/boss tests also PASS. Snapshot:
+  build/raid-menu-spec-tests.log. No gameplay round definitions changed.
+- Actual spec screen visual checks pending. Initial capture found the preview back
+  at the title screen; added dev-only F8 reopening and narrowed capture helper to
+  the exact Java process with the preview JVM flag. Final preview session10314.
+  Also gave title slightly larger typography than subtitle per spec. Do not claim
+  final visual verification until recorded below.
+- Final visual inspection COMPLETE in Minecraft: compact854x480 and full924x861
+  match four-tier layout and palette. Full view shows example names and key note;
+  compact view keeps all four rows, X, green Start and footer visible. Toggled
+  preview lock and confirmed disabled DUNGEON IN USE. Screenshots:
+  build/raid-menu-spec-compact.png, raid-menu-spec-full.png, raid-menu-spec-locked.png.
+  Client log build/raid-menu-spec-client.log. Preview session10314 stopped; no
+  user world was opened. Two-real-client live broadcast test remains manual.
+- Final build --offline PASS (9s); fast admission/round checks PASS. Integration
+  suite 3/3 remains PASS from17:04:04; later edits were UI typography/preview only.
+  Updated README with new four-group odds and test expectations. Spec file unchanged.
+- User asked whether payout is one or multiple rewards. Explained existing design:
+  ONE reward selection per clear (group then item); selection may grant a configured
+  stack (e.g.4diamonds/2candies). No request to change reward count. Stage6 payout
+  is still unimplemented; keep key unchanged in current Stage5.
+
+## Visible trainers and odds screen fixes (2026-11-08)
+- Read AGENTS.md and memory.md before implementing. User reported invisible NPCs,
+  a blanked-out odds GUI, and requested a more stylish GUI. User reiterated that
+  memory.md must be read and updated; this section records current progress.
+- Confirmed from real client log: SpawnNPCPacket rejected cobblemon:dummy as an
+  unknown NPCClass. Headless battle tests could not catch this client visibility
+  issue. Replaced dummy with datapack-registered mondungeons:dungeon_trainer,
+  data/mondungeons/npcs/dungeon_trainer.json, using Cobblemon's standard model.
+  Names visible, faces challenger, no autonomous interaction/party auto-healing.
+- Trainers now spawn visibly, announce challenge, then automatically initiate
+  battle after challengeDelayTicks (bundled default40). New setting remains data-
+  driven; older configs missing it read the bundled default. Spawn offsets now
+  rotate relative to the arena-entry yaw and remain anchored to entry, instead
+  of drifting with player position. Pending introductions cancel/remove cleanly.
+- Confirmed actual MC1.21.1 Screen.render calls renderBackground. Previous code
+  drew odds before super.render, causing another vanilla background/blur to cover
+  all content. Reworked to one custom renderBackground via super.render, then
+  foreground content. No second vanilla blur pass.
+- Redesigned screen: navy panel, tier-color accents/badge, key icon, custom styled
+  buttons, hover reward cards, pagination and wide-layout summary sidebar.
+  Retains real server odds, complete-label tooltip and single-use Start token.
+  Start disabled without a network connection for safe title-screen previews.
+- Added guarded development-only visual preview: runClient -PraidUiPreview=legendary
+  (or another tier). Opens the real screen at the title screen from local reward
+  data, without modifying a world. Installed modpacks never run this preview.
+- Validation so far: build/fast checks PASS for gameplay/UI changes; BOTH updated
+  RCT GameTests PASS (16:26:24), including registered NPC class, spawn before battle,
+  ten delayed challenges, healing schedule and boss setup. Log snapshot intended
+  at build/stage-five-visible-trainer-tests.log. Visual preview initially opened
+  during loading and was replaced by the title screen; added overlay-null guard.
+- Actual client visual inspection COMPLETE at compact854x480 and wide1584x861.
+  Confirmed readable rewards/chances, tier badge, custom controls, wide sidebar
+  and row tooltip. Screenshots: build/raid-ui-preview.png and
+  build/raid-ui-preview-wide.png. Client log: build/raid-ui-preview-client.log.
+  Preview session94630 stopped after capture; no user world was opened/modified.
+- Final build --offline PASS (7s), admission/round checks PASS. Remapped release
+  jar includes registered NPC JSON, updated gauntlet and client screen. Gameplay
+  GameTests remain PASS from16:26:24; later change was only preview loading guard.
+  Actual in-world NPC visual retest remains for user; registered-class spawn and
+  challenge sequencing were verified in integration tests, not a client playthrough.
+- Stage5 still on feature/stage-five-gauntlet, uncommitted/unpushed. No Stage6 work.
+
+## /setdungeon shortcut (2026-11-08)
+- User requested standing in an area and running /setdungeon to configure it.
+- Added operator-only /setdungeon using the same setArena implementation as
+  /raiddungeon setarena (which remains supported). Saves current dimension,
+  exact position and facing immediately; refuses changes during an active run.
+  This sets the entrance point in the existing area; it does not generate a structure.
+- README now uses /setdungeon as the primary setup command. Build --offline
+  SUCCESS; admission and round checks PASS. In-world command use not retested.
+
+## Stage five gauntlet (2026-11-08)
+- Read AGENTS.md and memory.md at session start. User authorized Stage 4 push
+  and Stage 5. Verified build/admission checks, committed Stage 4 as 28079f4 and
+  pushed origin/feature/stage-four-entry-exit. No main merge. Current branch:
+  feature/stage-five-gauntlet. Stage 5 changes remain uncommitted/local.
+- User decided: full-party healing EVERY OTHER round (after 2/4/6/8), and a very
+  strong, BIG final Pokemon boss. User clarified "mega" means oversized like Rift,
+  NOT Mega Evolution. No Mega Showdown or Rift dependency should be introduced.
+- Arena remains unconfigured by explicit previous decision. /raiddungeon setarena
+  remains setup path. No new arena coordinates have been chosen.
+- User requests autonomous work without routine confirmations. Workspace policy
+  still requires certain escalations. OpenAI Docs permission guidance checked;
+  user can choose Approve for me in composer permissions if available. Do not
+  claim the session permission mode was changed by the agent.
+- Implementation: dungeon-rounds.json -> config/mondungeons on first attempt,
+  reload per attempt. Ten defaults scale32->50; doubles3/6/8, varied RCT teams,
+  trainer offset/AI skill/healing/timing in data. Same gauntlet for every key.
+- RctDungeonTeams requires runtime isModLoaded("rctmod") then reads installed
+  RCT trainer JSON resources. Creates disposable Cobblemon Pokemon/NPC teams;
+  no native RCT card/story/bag/payout lifecycle and no RCT class linkage.
+  This reuses real RCT teams with selected slots and round-level normalization.
+  Verified IDs/teams against cached RCT0.19.2-beta jar before selecting them.
+- Boss: Cynthia's slot5 Garchomp from champion_cynthia_03a5, level50, scale3,
+  perfect IVs,252HP/252Atk/6Spe,Leftovers,Earthquake/DragonClaw/SwordsDance/StoneEdge.
+  Stats/moves/item/size are in data. Size is visual; no invented HP multiplier.
+- BattleBuilder.pvn uses real GEN_9_SINGLES/DOUBLES, adjustLevel0,
+  cloneParties=false,healFirst=false. No player level normalization or entry heal.
+  All round teams preflight before lock/teleport. Attrition persists on odd rounds;
+  explicit heals only after configured wins AND after battle cleanup.
+- DungeonRoundProgress filters battleId and consumes expected ID before advancing,
+  rejecting duplicate/unrelated events. DungeonGauntlet subscribes on construction,
+  schedules next round after cleanup/delay, and unsubscribes on shutdown.
+  Loss, missing/ended battle without victory, failed launch, exit, death/disconnect
+  cancel tracked battle/NPC and release lock through existing return journal.
+  Temporary tagged NPC leftovers are removed on ENTITY_LOAD (fresh tag set after
+  initial entity load). Stage7 still needs full failure-path audit.
+- Stage5 clearing final round returns with key, completion chat, no reward/spin;
+  Stage6 payout/consumption not started. Cooldown still undecided.
+- Standard build --offline SUCCESS, admission checks and new round checks PASS.
+  Round checks cover10 rounds,ID filtering/duplicates,healing2/4/6/8,boss and invalid
+  config. Gametest sources compile. Optional -PrctCompat=true development profile
+  adds pinned RCT/API/Architectury/ForgeConfig runtime only; none packaged/required.
+- Fabric gametest tests inspect all installed teams/boss and use real battle starts
+  plus SYNTHETIC victory events for10 transitions/healing. Not a human-played run.
+  First RCT run caught declared optional held-item alternatives: e.g. manectite
+  followed by expert_belt. Fixed loader to choose first actually registered
+  alternative, matching RCT's data fallback approach; no Mega mod required.
+  Second runGameTest -PrctCompat=true --offline: BOTH required tests PASS at
+  14:28:34 (10.42s test execution). Verified installed RCT team creation/levels,
+  scale3 boss/perfect IVs/EVs, real singles/doubles starts, ten sequential rounds,
+  synthetic duplicate victories, persistent odd-round injury and even-round heals.
+  Base runGameTest is skipped without
+  rctCompat. No test helpers are packaged in the mod.
+- README updated with Stage5 behavior and validation commands. Continue inspecting
+  real dependency bytecode/source on API failures; do not guess symbol variants.
+- Human-played battle balance, visual boss size/client rendering, arena entry/return
+  multiplayer scenarios and full Stage7 fault injection are still manual/pending.
+- Final base build --offline SUCCESS after RCT test run (23s); fast admission and
+  round checks both PASS. Release jar build/libs/mondungeons-1.0.0.jar contains
+  round config and gauntlet/RCT snapshot loader; no tests or optional vendor classes.
+  Headless log preserved as build/stage-five-gametest.log. Test server shut down
+  normally; no new interactive client launched. README has runClient with rctCompat
+  for local play. Arena is still unconfigured. Stage5 remains uncommitted/unpushed.
+
 ## Stage four entry/exit (2026-11-06)
 - Read AGENTS.md and memory.md at start; reread gym GymChallenges move/restore
   and GymReturnRecovery before implementing. No reference-repo edits.

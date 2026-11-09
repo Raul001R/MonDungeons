@@ -26,6 +26,42 @@ loom {
 	}
 }
 
+fabricApi {
+	configureTests {
+		createSourceSet = true
+		modId = 'mondungeons-tests'
+		enableClientGameTests = false
+	}
+}
+kotlin.target.compilations.named('gametest') { associateWith(kotlin.target.compilations.getByName('main')) }
+
+// Optional development profile; RCT never becomes a packaged or required dependency.
+if (providers.gradleProperty('rctCompat').map { it.toBoolean() }.getOrElse(false)) {
+	repositories { mavenCentral() }
+	configurations { rctCompatLibraries }
+	['runtimeClasspath', 'clientRuntimeClasspath', 'gametestRuntimeClasspath'].each { name ->
+		configurations.named(name) { extendsFrom configurations.rctCompatLibraries }
+	}
+	dependencies {
+		modLocalRuntime 'maven.modrinth:rctmod:rgfBfnW9'
+		modLocalRuntime 'maven.modrinth:rctapi:DoQNDXAU'
+		modLocalRuntime 'maven.modrinth:architectury-api:Pzc2FP5K'
+		modLocalRuntime 'maven.modrinth:forge-config-api-port:N5qzq0XV'
+		rctCompatLibraries 'com.electronwill.night-config:core:3.8.0'
+		rctCompatLibraries 'com.electronwill.night-config:toml:3.8.0'
+	}
+}
+tasks.named('processGametestResources') {
+	def withRct = providers.gradleProperty('rctCompat').map { it.toBoolean() }.getOrElse(false)
+	inputs.property 'rctCompat', withRct
+	filesMatching('fabric.mod.json') {
+		expand dungeonGameTests: withRct ? '"sauceology.mondungeon.DungeonBattleGameTests"' : ''
+	}
+}
+tasks.named('runGameTest') {
+	onlyIf { providers.gradleProperty('rctCompat').map { it.toBoolean() }.getOrElse(false) }
+}
+
 dependencies {
 	modImplementation "maven.modrinth:cobblemon:PdOzYHKU"
 	// To change the versions see the gradle.properties file
@@ -54,6 +90,10 @@ tasks.withType(JavaExec).configureEach {
 	dependsOn unpackCobblemonRuntime
 	classpath += fileTree(cobblemonRuntimeDirectory) { include '**/*.jar' }
 	javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(21) }
+	if (name == 'runGameTest') maxHeapSize = '2G'
+	if (name == 'runClient' && providers.gradleProperty('raidUiPreview').isPresent()) {
+		systemProperty 'mondungeons.raidUiPreview', providers.gradleProperty('raidUiPreview').get()
+	}
 }
 
 tasks.register('verifyDungeonAdmission', JavaExec) {
@@ -69,6 +109,13 @@ tasks.named('test') {
 	dependsOn tasks.named('verifyDungeonAdmission')
 	failOnNoDiscoveredTests = false
 }
+tasks.register('verifyDungeonRounds', JavaExec) {
+	group = 'verification'
+	dependsOn tasks.named('testClasses')
+	classpath = sourceSets.test.runtimeClasspath
+	mainClass = 'sauceology.mondungeon.DungeonRoundChecksKt'
+}
+tasks.named('check') { dependsOn tasks.named('verifyDungeonRounds') }
 
 processResources {
     from('dungeon-loot.json')

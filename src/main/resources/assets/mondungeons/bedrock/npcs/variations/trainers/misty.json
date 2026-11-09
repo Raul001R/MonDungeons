@@ -1,0 +1,17 @@
+{
+    "name":  "mondungeons:trainers/misty",
+    "order":  0,
+    "variations":  [
+                       {
+                           "aspects":  [
+
+                                       ],
+                           "layers":  [
+
+                                      ],
+                           "model":  "cobblemon:trainer.geo",
+                           "poser":  "cobblemon:standard",
+                           "texture":  "rctmod:textures/trainers/single/leader_misty_019f.png"
+                       }
+                   ]
+}

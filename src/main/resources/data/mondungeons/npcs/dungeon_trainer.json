@@ -1,0 +1,11 @@
+{
+  "resourceIdentifier": "cobblemon:standard",
+  "hitbox": "player",
+  "names": ["Dungeon Trainer"],
+  "autoHealParty": false,
+  "randomizePartyOrder": false,
+  "canDespawn": false,
+  "isMovable": false,
+  "isInvulnerable": true,
+  "battleConfiguration": { "canChallenge": false, "healAfterwards": false }
+}

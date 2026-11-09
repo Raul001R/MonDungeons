@@ -1,0 +1,8 @@
+{
+  "schemaVersion": 1,
+  "id": "mondungeons-tests",
+  "version": "1.0.0",
+  "environment": "*",
+  "entrypoints": { "fabric-gametest": [${dungeonGameTests}] },
+  "depends": { "mondungeons": "*", "fabric-gametest-api-v1": "*" }
+}

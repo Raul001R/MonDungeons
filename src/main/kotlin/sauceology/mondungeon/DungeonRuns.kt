@@ -12,7 +12,7 @@ import org.slf4j.LoggerFactory
 import java.util.UUID
 
 data class ActiveDungeon(val playerUuid: UUID, val keyTierId: String, val returnPos: DungeonPosition,
-                         val currentRound: Int = 1)
+                         var currentRound: Int = 1)
 private data class RaidOffer(val token: String, val hand: InteractionHand, val key: ItemStack)
 
 /** One instance per server. Network callbacks and lifecycle events run on its server thread. */
@@ -23,8 +23,13 @@ class DungeonRuns(private val server: MinecraftServer) {
     private val logger = LoggerFactory.getLogger("mondungeons/runs")
     private var ticksUntilRetry = 0
     private var closing = false
+    private var lastBroadcastOccupied = false
     private val admission = DungeonAdmission<ActiveDungeon>()
     val active: ActiveDungeon? get() = admission.active // null is the global lock's free state.
+    private val gauntlet = DungeonGauntlet(server,
+        onRound = { player, round -> active?.takeIf { it.playerUuid == player }?.currentRound = round },
+        onComplete = { player -> finishGauntlet(player, true) },
+        onFailure = { player -> finishGauntlet(player, false) })
 
     fun offer(player: ServerPlayer, hand: InteractionHand, stack: ItemStack): String {
         val token = UUID.randomUUID().toString()
@@ -50,6 +55,10 @@ class DungeonRuns(private val server: MinecraftServer) {
         if (!level.worldBorder.isWithinBounds(pos) || pos.y < level.minBuildHeight || pos.y >= level.maxBuildHeight) {
             return tell(player, "arena_unavailable")
         }
+        val prepared = try { gauntlet.prepare(player) } catch (exception: Exception) {
+            logger.error("Dungeon trainer/party preflight failed", exception)
+            return tell(player, "trainers_unavailable")
+        }
         val origin = DungeonPosition.capture(player)
         try {
             if (!admission.enter(ActiveDungeon(player.uuid, tier.id, origin),
@@ -58,14 +67,23 @@ class DungeonRuns(private val server: MinecraftServer) {
                 return tell(player, "occupied")
             }
             tell(player, "entered")
+            gauntlet.start(player, prepared)
         } catch (exception: Exception) {
             logger.error("Could not enter dungeon for {}", player.uuid, exception)
+            if (active?.playerUuid == player.uuid) {
+                admission.clear()
+                gauntlet.cancel()
+                restore(player.uuid)
+            }
             tell(player, "entry_failed")
         }
     }
 
     fun exit(player: ServerPlayer): Boolean {
-        if (active?.playerUuid == player.uuid) admission.clear()
+        if (active?.playerUuid == player.uuid) {
+            admission.clear()
+            gauntlet.cancel()
+        }
         if (player.uuid !in recovery.pending()) {
             tell(player, "no_run")
             return false
@@ -89,7 +107,10 @@ class DungeonRuns(private val server: MinecraftServer) {
 
     fun disconnect(player: UUID) {
         offers.remove(player)
-        if (active?.playerUuid == player) admission.clear()
+        if (active?.playerUuid == player) {
+            admission.clear()
+            gauntlet.cancel()
+        }
         // The pre-teleport journal remains until a live player can be restored.
     }
 
@@ -97,6 +118,16 @@ class DungeonRuns(private val server: MinecraftServer) {
         active?.let { run ->
             val player = server.playerList.getPlayer(run.playerUuid)
             if (player == null || !player.isAlive) disconnect(run.playerUuid)
+        }
+        gauntlet.tick()
+        val occupied = active != null
+        if (lastBroadcastOccupied != occupied) {
+            lastBroadcastOccupied = occupied
+            server.playerList.players.forEach { player ->
+                if (net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking.canSend(player, RaidAvailabilityPayload.TYPE)) {
+                    net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking.send(player, RaidAvailabilityPayload(occupied))
+                }
+            }
         }
         if (ticksUntilRetry-- > 0) return
         ticksUntilRetry = config.returnRetryTicks - 1
@@ -106,8 +137,17 @@ class DungeonRuns(private val server: MinecraftServer) {
     fun close() {
         closing = true
         admission.clear()
+        gauntlet.close()
         offers.clear()
         recovery.pending().keys.forEach(::restore)
+    }
+
+    private fun finishGauntlet(playerId: UUID, complete: Boolean) {
+        if (active?.playerUuid != playerId) return
+        admission.clear()
+        val player = server.playerList.getPlayer(playerId)
+        if (player != null) tell(player, if (complete) "gauntlet_complete" else "gauntlet_failed")
+        restore(playerId)
     }
 
     private fun restore(playerId: UUID): Boolean {
