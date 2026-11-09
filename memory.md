@@ -1,5 +1,19 @@
 # Agent memory
 
+## Stage 6 CI download failure (2026-11-09)
+- Stage6 payout pushed as7552804. User reported failed build; read actual Actions
+  job129006699783/run42570560870. Gradle distribution download timed out at10s
+  with one attempt; no source compilation started. Detailed log captured in
+  ignored build/ci-stage-six/job.log in primary workspace.
+- Increased wrapper networkTimeout to60000ms, retries3, backoff1000ms. This
+  fixes the observed bootstrap weakness without changing game behavior.
+- Applied in isolated build/stage-six-ci worktree on feature/stage-six-payout.
+  Primary feature/stage-seven-failure-paths contains unfinished journal/death-key
+  changes; do not mix these into the Stage6 CI fix. Stage7 must resume afterward.
+- Wrapper validation and new CI result pending below.
+- gradlew.bat --version PASS: Gradle9.5.1 on JDK25; local cached distribution
+  used, so CI remains the fresh-download verification.
+
 ## Mega Showdown source lookup (2026-11-09)
 - User asked to obtain the item names from the mod instead of asking them to
   list everything. Read AGENTS.md/memory.md and consulted the official upstream
