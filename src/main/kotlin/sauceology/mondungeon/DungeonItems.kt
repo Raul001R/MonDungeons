@@ -16,7 +16,7 @@ object DungeonItems {
     val DUNGEON_KEY = object : Item(Properties()) {
         override fun use(level: Level, player: Player, hand: InteractionHand): InteractionResultHolder<ItemStack> {
             val stack = player.getItemInHand(hand)
-            if (player is ServerPlayer) RaidUi.open(player, stack)
+            if (player is ServerPlayer) RaidUi.open(player, stack, hand)
             return InteractionResultHolder.sidedSuccess(stack, level.isClientSide)
         }
 

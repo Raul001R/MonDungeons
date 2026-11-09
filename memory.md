@@ -1,5 +1,48 @@
 # Agent memory
 
+## Stage four entry/exit (2026-11-06)
+- Read AGENTS.md and memory.md at start; reread gym GymChallenges move/restore
+  and GymReturnRecovery before implementing. No reference-repo edits.
+- User requested Stage 3 push then Stage 4. Committed 940a4b1 and pushed
+  origin/feature/stage-three-raid-ui. No merge to main; no PR created (gh absent).
+- Current branch feature/stage-four-entry-exit. Stage 4 changes remain local.
+- Explicit user decision: leave arena unconfigured. Bundled dungeon-arena.json
+  has arena:null and returnRetryTicks:20; copied to config/mondungeons on server
+  start. Never guess arena coords. Admin /raiddungeon setarena saves current
+  dimension, exact Vec3, yaw/pitch and applies it immediately. Config otherwise
+  loads per server startup. No arena structure/dimension is generated.
+- Start now sends C2S single-use token issued with odds screen, bound server-side
+  to player, original hand and copied key components. Revalidates held key,
+  alive/awake/unmounted/non-spectator state, no current Cobblemon battle, no
+  pending return, configured/available/in-bounds arena and free global lock.
+  No key consumption. Stale/replayed tokens cannot start another run.
+- DungeonRuns is per server; ActiveDungeon (UUID, tier, exact origin, round1)
+  is guarded by single DungeonAdmission.active value on server thread. A second
+  player is refused; /raiddungeon exit only clears the caller's active run.
+- Copied gym approach for overworld SavedData return journal (mondungeons_returns).
+  Flush return obligation BEFORE moving. Return resets velocity/fall distance,
+  restores dimension/Vec3/yaw/pitch, saves player data THEN forgets obligation.
+- Lock clears on failed entry (even failed rollback), exit, disconnect, death
+  and server stop. Unresolved returns persist independently and retry for live
+  online players at configured cadence; dead/offline players recover on respawn/
+  login. Lock is never persisted. Pending return prevents that player's reentry.
+  These baseline teleport safeguards exist now; battle-specific Stage 7 failure
+  paths remain unimplemented and untested.
+- Added dependency-free DungeonAdmissionChecks main in test sources, wired into
+  Gradle verifyDungeonAdmission/test/check. Covers save-before-move ordering,
+  exclusivity, persistence failure, refused/throwing teleport, rollback exception,
+  next-player retry and idempotent cleanup. Gradle test discovery disabled only
+  for the absent JUnit engine; JavaExec regression checks actually run.
+- Final gradlew.bat build --offline SUCCESS, admission regression checks PASS.
+  Jar includes arena config/service/recovery/Start payload; test harness is not
+  packaged. README documents arena setup and single/multiplayer/manual tests.
+- Runtime smoke launch initialized Stage 4 at 22:17:47 with four tiers/tables;
+  client left open (session 69410). Log snapshot: build/stage-four-client.log.
+  In-world exact return, two-player contention, reconnect/death/restart recovery
+  and config admin command checks still pending; do not claim them tested.
+- Stage 5 not started. Healing choice must be asked before rounds. Failure
+  cooldown remains undecided. Reward TODO IDs/specs remain unresolved for Stage 6.
+
 ## Stage three UI (2026-11-06)
 - Read AGENTS.md and memory.md before starting. User authorized pushing Stage 2
   and beginning Stage 3. Stage 2 committed dc94582 and pushed to

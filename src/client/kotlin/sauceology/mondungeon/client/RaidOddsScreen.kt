@@ -2,10 +2,11 @@ package sauceology.mondungeon.client
 
 import net.minecraft.client.gui.GuiGraphics
 import net.minecraft.client.gui.components.Button
-import net.minecraft.client.gui.components.Tooltip
 import net.minecraft.client.gui.screens.Screen
 import net.minecraft.network.chat.Component
 import sauceology.mondungeon.RaidOddsPayload
+import sauceology.mondungeon.RaidStartPayload
+import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking
 import java.text.DecimalFormat
 import kotlin.math.ceil
 
@@ -25,10 +26,13 @@ class RaidOddsScreen(private val odds: RaidOddsPayload) : Screen(Component.trans
             .bounds(left + 8, height - 62, 30, 20).build())
         next = addRenderableWidget(Button.builder(Component.literal(">")) { page++; updatePages() }
             .bounds(left + panelWidth - 38, height - 62, 30, 20).build())
-        val start = addRenderableWidget(Button.builder(Component.translatable("screen.mondungeons.start")) {}
+        val start = addRenderableWidget(Button.builder(Component.translatable("screen.mondungeons.start")) { button ->
+            button.active = false
+            ClientPlayNetworking.send(RaidStartPayload(odds.startToken))
+            onClose()
+        }
             .bounds(width / 2 - 104, height - 32, 100, 20).build())
-        start.active = false
-        start.tooltip = Tooltip.create(Component.translatable("screen.mondungeons.start_pending"))
+        start.active = ClientPlayNetworking.canSend(RaidStartPayload.TYPE)
         addRenderableWidget(Button.builder(Component.translatable("gui.done")) { onClose() }
             .bounds(width / 2 + 4, height - 32, 100, 20).build())
         updatePages()
