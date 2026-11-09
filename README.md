@@ -4,13 +4,36 @@ Standalone Fabric/Kotlin addon for Minecraft 1.21.1 and Cobblemon 1.8.4.
 
 MonDungeons registers `mondungeons:dungeon_key` and adds a separate key roll to
 built-in vanilla `minecraft:chests/*` loot tables. Each newly generated chest has
-a default 1% key chance. Already generated loot is unchanged; datapack-replaced
+a default 10% common-key chance (rare 4.167%, epic 2%, legendary 0.5%; one key
+maximum per chest roll, about 16.667% for any key). Already generated loot is unchanged; datapack-replaced
 chest tables are respected. Using a tiered key opens the MonDungeons odds screen
 without consuming it. Start enters a ten-round trainer gauntlet in the configured
 arena, one player at a time. The arena remains unconfigured until you set it.
 Clearing all rounds pays one configured prize after a cosmetic spin and consumes
 one key. Unresolved reward IDs must be configured before a live run can start.
 The key uses Minecraft's trial-key texture as a temporary visual.
+
+Chest rates are configured in `config/mondungeons/dungeon-chests.json` with
+`commonKeyChance` (default `0.10`). Other tiers retain the relative `chestWeight`
+ratios in `dungeon-loot.json`. Restart after changing these settings. The new
+file is created on upgrades; existing reward/round/arena configs are preserved.
+
+Already-created world chests that still have an unrolled loot table get the new
+roll on their first opening, even in old chunks. Previously opened chests have
+lost that loot-table reference; a reload cannot regenerate their original loot.
+For a selected previously opened chest, an operator can add one random-tier key
+without replacing its contents using `/loot insert X Y Z loot mondungeons:inject/dungeon_key`.
+This is a guaranteed admin insertion, not the random world-chest chance. A full
+chest needs an empty slot. Do not apply loot-table replacement commands to player storage.
+
+For world-wide recovery, [ChestShare](https://modrinth.com/mod/chestshare/) supports
+Fabric 1.21.1 server-side and documents a recovery workflow for already-looted
+containers. Generate a separate mirror with the same seed/mods/world generation,
+export with `/chestshare export recovery`, then import on the live server with
+`/chestshare import recovery`. The author says import skips non-empty containers
+by default. Back up first and verify the mirror/export on a test copy. This also
+changes structure chests to per-player loot; it is optional and has not been
+compatibility-tested with MonDungeons. No additional mod was installed here.
 
 Build with JDK 25: `./gradlew.bat build`. Development Minecraft launches use JDK 21.
 The dependency/toolchain pins match the working custom-trainers reference project.

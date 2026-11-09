@@ -1,6 +1,27 @@
 # Agent memory
 
 ## Publish version 1.0.1 (2026-11-09)
+- Pushed implementation as2c8d577 on origin/bugfix/1.0.1. Push CI run42698119465
+  was in progress when new chest-rate request arrived; verify all new-head checks.
+- User then requested common keys10% and a way/mod for already-created chests.
+  New dungeon-chests.json commonKeyChance0.10 derives overall16.667% using existing
+  60/25/12/3weights => common10%, rare4.167%, epic2%, legendary0.5%. Keep at most
+  one key per natural chest roll. Applies on upgrades without overwriting configs.
+  Rate condition moved to injected chest pool; inject/dungeon_key is now a direct
+  single random-tier roll so vanilla /loot insert X Y Z loot ... can add a key
+  to an explicitly selected existing chest without replacing its inventory.
+- Research: unopened existing vanilla loot-table chests already get injection on
+  first roll; opened chests lose original LootTable reference. ChestShare official
+  Modrinth page supports Fabric1.21.1/server-only and mirror-world export/import
+  recovery for old looted containers, skips non-empty by default. Documented as
+  optional, untested compatibility, no mod installed. Source:
+  https://modrinth.com/mod/chestshare/ . LootRestock current published versions
+  start1.21.7, so do not recommend that jar for1.21.1.
+- Earlier push2c8d577 CI42698119465 SUCCESS. Chest changes: offline build PASS19s;
+  all12Minecraft tests PASS17.76s, including5000actual simple_dungeon loot rolls
+  (common8-12% acceptance around target10%, at most1key), and real vanilla
+  /loot insert into previously filled chest preserves its7diamonds and adds1key.
+  New chest config created separately so old loot/arena/round files are untouched.
 - User explicitly requested push after local implementation/validation finished.
   Commit the tested changes on bugfix/1.0.1 and push that feature branch; keep main
   untouched. Local build and all11Minecraft integration tests passed; client

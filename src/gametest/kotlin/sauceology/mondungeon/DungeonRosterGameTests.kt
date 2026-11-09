@@ -7,6 +7,36 @@ import net.minecraft.gametest.framework.GameTestHelper
 
 class DungeonRosterGameTests : FabricGameTest {
     @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 400)
+    fun increasedChestOddsAndExistingChestInsertion(helper: GameTestHelper) {
+        val params = net.minecraft.world.level.storage.loot.LootParams.Builder(helper.level)
+            .withParameter(net.minecraft.world.level.storage.loot.parameters.LootContextParams.ORIGIN,
+                net.minecraft.world.phys.Vec3.atCenterOf(helper.absolutePos(net.minecraft.core.BlockPos(1, 2, 1))))
+            .create(net.minecraft.world.level.storage.loot.parameters.LootContextParamSets.CHEST)
+        val key = net.minecraft.resources.ResourceKey.create(net.minecraft.core.registries.Registries.LOOT_TABLE,
+            net.minecraft.resources.ResourceLocation.parse("minecraft:chests/simple_dungeon"))
+        val table = helper.level.server.reloadableRegistries().getLootTable(key)
+        var common = 0
+        repeat(5000) { seed ->
+            val keys = table.getRandomItems(params, seed.toLong() + 1).filter { it.`is`(DungeonItems.DUNGEON_KEY) }
+            check(keys.size <= 1)
+            if (keys.singleOrNull()?.get(net.minecraft.core.component.DataComponents.CUSTOM_DATA)?.copyTag()
+                    ?.getString("dungeon_key_tier") == "common") common++
+        }
+        check(common in 400..600) { "Expected about10% common keys, got $common/5000" }
+        val relative = net.minecraft.core.BlockPos(1, 2, 1)
+        helper.setBlock(relative, net.minecraft.world.level.block.Blocks.CHEST)
+        val pos = helper.absolutePos(relative)
+        val chest = helper.level.getBlockEntity(pos) as net.minecraft.world.level.block.entity.ChestBlockEntity
+        chest.setItem(0, net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.DIAMOND, 7))
+        helper.level.server.commands.dispatcher.execute(
+            "loot insert ${pos.x} ${pos.y} ${pos.z} loot mondungeons:inject/dungeon_key",
+            helper.level.server.createCommandSourceStack().withSuppressedOutput())
+        check(chest.getItem(0).`is`(net.minecraft.world.item.Items.DIAMOND) && chest.getItem(0).count == 7)
+        check((0 until chest.containerSize).sumOf { if (chest.getItem(it).`is`(DungeonItems.DUNGEON_KEY)) chest.getItem(it).count else 0 } == 1)
+        helper.succeed()
+    }
+
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 400)
     fun everyTrainerAndBossMatchesItsTypeAndMovePolicy(helper: GameTestHelper) {
         fun json(name: String) = requireNotNull(javaClass.getResourceAsStream("/$name"))
             .bufferedReader().use { JsonParser.parseReader(it).asJsonObject }

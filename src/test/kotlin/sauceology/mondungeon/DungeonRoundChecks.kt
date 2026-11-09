@@ -7,6 +7,15 @@ fun main() {
     val root = requireNotNull(DungeonRoundPlan::class.java.getResourceAsStream("/dungeon-rounds.json"))
         .bufferedReader().use { JsonParser.parseReader(it).asJsonObject }
     val plan = DungeonRoundPlan.parse(root)
+    val chestSettings = JsonParser.parseString("""{"commonKeyChance":0.10}""").asJsonObject
+    val tierWeights = listOf("common" to 60, "rare" to 25, "epic" to 12, "legendary" to 3)
+        .map { (id, weight) -> DungeonKeyTier(id, weight, net.minecraft.resources.ResourceLocation.parse("mondungeons:rewards/$id")) }
+    val chestChance = DungeonChestSettings.chance(chestSettings, tierWeights).toDouble()
+    check(kotlin.math.abs(chestChance * 0.6 - 0.10) < 0.000001)
+    check(kotlin.math.abs(chestChance * 0.25 - 1.0 / 24) < 0.000001)
+    check(kotlin.math.abs(chestChance * 0.12 - 0.02) < 0.000001)
+    check(kotlin.math.abs(chestChance * 0.03 - 0.005) < 0.000001)
+    check(runCatching { DungeonChestSettings.chance(JsonParser.parseString("""{"commonKeyChance":0.7}""").asJsonObject, tierWeights) }.isFailure)
     check(plan.rounds.size == 10)
     check(plan.healAfterRounds == setOf(2, 4, 6, 8, 9))
     check(plan.rounds.any { it.format == "doubles" } && plan.rounds.any { it.format == "singles" })
