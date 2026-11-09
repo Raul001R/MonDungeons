@@ -1,0 +1,22 @@
+// CI prefetches this exact compiler from JetBrains' official release asset API.
+// Keep every other dependency on its normal repository and preserve the POM's
+// transitive dependencies; do not replace the compiler with a non-transitive file.
+def verifiedRepository = System.getenv('MONDUNGEONS_CI_MAVEN')
+if (verifiedRepository) {
+    allprojects {
+        repositories {
+            exclusiveContent {
+                forRepository {
+                    maven {
+                        name = 'verifiedCiKotlinCompiler'
+                        url = uri(verifiedRepository)
+                        metadataSources { mavenPom(); artifact() }
+                    }
+                }
+                filter {
+                    includeVersion('org.jetbrains.kotlin', 'kotlin-compiler-embeddable', '2.4.20')
+                }
+            }
+        }
+    }
+}

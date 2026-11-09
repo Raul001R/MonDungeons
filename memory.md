@@ -55,6 +55,20 @@
   No processes remain running. Stage7 ready for local/manual pack testing; the
   documented abrupt cross-store crash limit remains. Commit follows this handoff.
 ## Stage 6 CI download failure (2026-11-09)
+- User supplied another failing check: Maven Kotlin compiler2.4.20 JAR redirects
+  to a GitHub browser release URL returning504. The same Stage6 commit has both
+  successful and failing runs, so one green run did not resolve the flaky path.
+- Official JetBrains asset587891620 serves the same58593245byte compiler. Its
+  published SHA256cf97161430683fb9af96dc6a7017ffae1fe8737b80d12eee11f2fe3e76f8ded8
+  matches the working local compiler. CI now prefetches/verifies that artifact,
+  fetches its official POM, and uses an init-script exclusive Maven repo for only
+  org.jetbrains.kotlin:kotlin-compiler-embeddable:2.4.20. Other dependencies and
+  compiler transitives keep normal resolution. Kotlin version/game code unchanged.
+- Validate local repo/init script and observe fresh CI on6 and7 before claiming
+  this failure fixed. Apply fix to Stage7 as well (already pushed5486291).
+- Official API compiler/POM download completed locally; JAR SHA256 verified.
+  Gradle dependencyInsight with the init script PASS (9s), resolving compiler
+  and its normal transitive graph. Full init-script build/remote checks pending.
 - Run42571132261 retried4times but services.gradle.org returned HTTP504; both
   downloads.gradle.org and GitHub browser download URL also returned504 in
   direct checks. Official GitHub release asset API418398387 responds200 with
