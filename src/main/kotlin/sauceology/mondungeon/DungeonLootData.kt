@@ -53,15 +53,21 @@ object DungeonLootData {
                 entries.mapIndexed { index, reward ->
                     val type = reward.get("type").asString
                     require(type in setOf("item", "pokemon"))
-                    require(reward.get(if (type == "item") "item" else "spec").asString.isNotBlank())
-                    if (type == "item") require(reward.get("count").asInt > 0)
+                    if (type == "pokemon") require(reward.get("spec").asString.isNotBlank())
+                    if (type == "item") {
+                        require(listOf("item", "items", "itemTag").count { reward.has(it) } == 1) {
+                            "Item prize must specify exactly one of item, items or itemTag"
+                        }
+                        if (reward.has("items")) require(reward.getAsJsonArray("items").size() > 0)
+                        require(reward.get("count").asBigDecimal.intValueExact() > 0)
+                    }
                     DungeonReward(reward.deepCopy(), chance / 100.0 * weights[index] / total, group)
                 }
             }
             val summaries = odds.map { (group, chance) ->
                 DungeonRewardGroup(group, chance.asDouble / 100.0, groups.getAsJsonArray(group).map {
                     val reward = it.asJsonObject
-                    reward.get("label")?.asString ?: reward.get(if (reward.get("type").asString == "item") "item" else "spec").asString
+                    reward.get("label")?.asString ?: reward.get("spec")?.asString ?: reward.toString()
                 })
             }
             loadedTables[tableId] = DungeonRewardTable(tableId, rewards, summaries)

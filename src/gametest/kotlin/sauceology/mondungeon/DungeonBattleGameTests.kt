@@ -13,6 +13,90 @@ import net.minecraft.gametest.framework.GameTestHelper
 
 class DungeonBattleGameTests : FabricGameTest {
     @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
+    fun payoutDeliversExactlyOnceAndKeepsKeysOnFailure(helper: GameTestHelper) {
+        val player = helper.makeMockServerPlayerInLevel()
+        fun key(count: Int = 1) = net.minecraft.world.item.ItemStack(DungeonItems.DUNGEON_KEY, count).apply {
+            set(net.minecraft.core.component.DataComponents.CUSTOM_DATA,
+                net.minecraft.world.item.component.CustomData.of(net.minecraft.nbt.CompoundTag().apply {
+                    putString("dungeon_key_tier", "rare")
+                }))
+        }
+        fun table(json: String) = DungeonRewardTable(MonDungeons.id("test/payout"), listOf(
+            DungeonReward(com.google.gson.JsonParser.parseString(json).asJsonObject, 1.0, "jackpot")), emptyList())
+        try {
+            val originalKey = key()
+            player.inventory.setItem(0, key(2))
+            val items = table("""{"type":"item","items":["minecraft:diamond","minecraft:emerald"],"count":4,"label":"Gems"}""")
+            DungeonPayout.validate(items)
+            val prize = DungeonPayout.roll(items, player)
+            check(player.inventory.getItem(0).count == 2) // Rolling/spinning never consumes.
+            check(prize.grant(player, originalKey))
+            check(player.inventory.getItem(0).count == 1)
+            check((0 until 36).sumOf { if (player.inventory.getItem(it).`is`(prize.item!!.item)) player.inventory.getItem(it).count else 0 } == 4)
+            check(!prize.grant(player, originalKey))
+            check(player.inventory.getItem(0).count == 1)
+
+            // A full inventory with a stacked key cannot receive a different stack.
+            repeat(36) { player.inventory.setItem(it, net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.STONE, 64)) }
+            player.inventory.setItem(0, key(2))
+            val blocked = DungeonPayout.roll(items, player)
+            check(!blocked.grant(player, originalKey))
+            check(player.inventory.getItem(0).count == 2)
+            // A single key frees its own slot, so delivery remains possible when otherwise full.
+            player.inventory.setItem(0, key())
+            check(blocked.grant(player, originalKey))
+            check(player.inventory.getItem(0).count == 4)
+
+            player.inventory.clearContent()
+            player.inventory.setItem(40, key()) // Moved offhand keys still work.
+            val shiny = table("""{"type":"pokemon","spec":"random shiny=true","label":"Shiny"}""")
+            DungeonPayout.validate(shiny)
+            val pokemonPrize = DungeonPayout.roll(shiny, player)
+            check(requireNotNull(pokemonPrize.pokemon).shiny)
+            check(pokemonPrize.grant(player, originalKey))
+            check(Cobblemon.storage.getParty(player).any { it.uuid == pokemonPrize.pokemon.uuid })
+            check(player.inventory.getItem(40).isEmpty)
+
+            val party = Cobblemon.storage.getParty(player)
+            repeat(6) { party.set(it, PokemonProperties.parse("eevee level=5").create()) }
+            player.inventory.setItem(0, key())
+            val overflow = DungeonPayout.roll(shiny, player)
+            check(overflow.grant(player, originalKey))
+            check(Cobblemon.storage.getPC(player).any { it.uuid == overflow.pokemon!!.uuid })
+            check(party.count() == 6 && player.inventory.getItem(0).isEmpty)
+
+            val missing = DungeonPayout.roll(items, player)
+            check(!missing.grant(player, originalKey)) // Never gives a free prize without a key.
+            val tag = table("""{"type":"item","itemTag":"minecraft:planks","count":2}""")
+            DungeonPayout.validate(tag)
+            check(DungeonPayout.itemChoices(tag.rewards.single().definition).size > 1)
+            val bad = table("""{"type":"item","items":["minecraft:diamond","TODO:missing"],"count":1}""")
+            check(runCatching { DungeonPayout.validate(bad) }.isFailure)
+            val invalidTag = table("""{"type":"item","itemTag":"mondungeons:missing","count":1}""")
+            check(runCatching { DungeonPayout.validate(invalidTag) }.isFailure)
+
+            DungeonLootData.tables.values.forEach { source ->
+                var lower = 0.0
+                source.rewards.filter { it.probability > 0 }.forEach { entry ->
+                    check(DungeonPayout.select(source, lower + entry.probability / 2) === entry)
+                    lower += entry.probability
+                }
+            }
+            val payload = RaidPayoutPayload("Shiny Garchomp", "jackpot", 100, "spinning", listOf("Diamond", "Shiny"))
+            val buffer = net.minecraft.network.RegistryFriendlyByteBuf(io.netty.buffer.Unpooled.buffer(), helper.level.registryAccess())
+            try { RaidPayoutPayload.CODEC.encode(buffer, payload); check(RaidPayoutPayload.CODEC.decode(buffer) == payload) }
+            finally { buffer.release() }
+            val matches = net.minecraft.core.registries.BuiltInRegistries.ITEM.keySet().filter {
+                it.namespace in setOf("mega_showdown", "zamega", "cobblemon", "cobblefurnies") &&
+                    Regex("wishing|crystal|stone|shard|scrap|snack|fossil|bottle|ability|candy").containsMatchIn(it.path)
+            }
+            org.slf4j.LoggerFactory.getLogger("mondungeons/reward-registry").info("Installed reward candidates: {}", matches)
+            org.slf4j.LoggerFactory.getLogger("mondungeons/reward-registry").info("Unresolved default prizes: {}", DungeonPayout.problems(DungeonLootData.tables.values.first()))
+            helper.succeed()
+        } finally { player.discard() }
+    }
+
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     fun commandTreeUsesMonDungeons(helper: GameTestHelper) {
         val commands = helper.level.server.commands.dispatcher.root
         val root = requireNotNull(commands.getChild("monDungeons"))

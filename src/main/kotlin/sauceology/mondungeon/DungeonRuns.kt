@@ -12,7 +12,8 @@ import org.slf4j.LoggerFactory
 import java.util.UUID
 
 data class ActiveDungeon(val playerUuid: UUID, val keyTierId: String, val returnPos: DungeonPosition,
-                         var currentRound: Int = 1)
+                         val key: ItemStack, val table: DungeonRewardTable, var currentRound: Int = 1,
+                         var payout: RolledDungeonReward? = null, var spinRemaining: Int = 0)
 private data class RaidOffer(val token: String, val hand: InteractionHand, val key: ItemStack)
 
 /** One instance per server. Network callbacks and lifecycle events run on its server thread. */
@@ -49,6 +50,14 @@ class DungeonRuns(private val server: MinecraftServer) {
         val held = player.getItemInHand(offer.hand)
         if (held.isEmpty || !ItemStack.isSameItemSameComponents(held, offer.key)) return tell(player, "key_changed")
         val tier = DungeonItems.tier(held) ?: return tell(player, "key_changed")
+        val table = DungeonLootData.tables.getValue(tier.lootTableId)
+        try { DungeonPayout.validate(table) } catch (exception: Exception) {
+            logger.error("Dungeon reward table {} cannot pay every advertised prize", table.id, exception)
+            return tell(player, "rewards_unavailable")
+        }
+        if (!net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking.canSend(player, RaidPayoutPayload.TYPE)) {
+            return tell(player, "ui_unavailable")
+        }
         val arena = config.arena ?: return tell(player, "arena_unconfigured")
         val level = server.getLevel(arena.dimension) ?: return tell(player, "arena_unavailable")
         val pos = BlockPos.containing(arena.position)
@@ -61,7 +70,7 @@ class DungeonRuns(private val server: MinecraftServer) {
         }
         val origin = DungeonPosition.capture(player)
         try {
-            if (!admission.enter(ActiveDungeon(player.uuid, tier.id, origin),
+            if (!admission.enter(ActiveDungeon(player.uuid, tier.id, origin, held.copyWithCount(1), table),
                     remember = { recovery.remember(player.uuid, origin) },
                     move = { move(player, arena) }, rollback = { restore(player.uuid) })) {
                 return tell(player, "occupied")
@@ -119,6 +128,9 @@ class DungeonRuns(private val server: MinecraftServer) {
             val player = server.playerList.getPlayer(run.playerUuid)
             if (player == null || !player.isAlive) disconnect(run.playerUuid)
         }
+        active?.let { run ->
+            if (run.payout != null && --run.spinRemaining <= 0) finishPayout(run)
+        }
         gauntlet.tick()
         val occupied = active != null
         if (lastBroadcastOccupied != occupied) {
@@ -143,11 +155,53 @@ class DungeonRuns(private val server: MinecraftServer) {
     }
 
     private fun finishGauntlet(playerId: UUID, complete: Boolean) {
-        if (active?.playerUuid != playerId) return
-        admission.clear()
+        val run = active?.takeIf { it.playerUuid == playerId } ?: return
+        if (run.payout != null) return // Duplicate final-victory callbacks never reroll.
         val player = server.playerList.getPlayer(playerId)
-        if (player != null) tell(player, if (complete) "gauntlet_complete" else "gauntlet_failed")
+        if (complete && player != null) {
+            try {
+                run.payout = DungeonPayout.roll(run.table, player)
+                run.spinRemaining = config.spinTicks
+                val prize = requireNotNull(run.payout)
+                net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking.send(player,
+                    RaidPayoutPayload(prize.label, prize.group, config.spinTicks, "spinning",
+                        run.table.rewards.map { it.definition.get("label")?.asString ?: "Reward" }))
+                return // Keep the global lock until the server grants the prize.
+            } catch (exception: Exception) {
+                logger.error("Could not roll dungeon reward for {}", playerId, exception)
+                tell(player, "payout_failed")
+            }
+        }
+        admission.clear()
+        if (!complete && player != null) tell(player, "gauntlet_failed")
         restore(playerId)
+    }
+
+    private fun finishPayout(run: ActiveDungeon) {
+        // Keep the lock through grant and return. No subsequent tick can repeat this payout.
+        run.spinRemaining = Int.MAX_VALUE
+        val player = server.playerList.getPlayer(run.playerUuid)
+        val prize = requireNotNull(run.payout)
+        var result = "failed"
+        try {
+            if (player != null) {
+                val granted = prize.grant(player, run.key)
+                result = if (granted) "granted" else "failed"
+                if (granted) player.sendSystemMessage(Component.translatable("message.mondungeons.reward_granted", prize.label))
+                else tell(player, "payout_failed")
+            }
+        } catch (exception: Exception) {
+            logger.error("Dungeon payout failed for {}", run.playerUuid, exception)
+            result = "error"
+            if (player != null) tell(player, "payout_error")
+        } finally {
+            try { restore(run.playerUuid) } finally { admission.clear() }
+        }
+        // Send after teleport so a dimension's loading screen cannot hide the final result.
+        if (player != null) try {
+            net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking.send(player,
+                RaidPayoutPayload(prize.label, prize.group, 0, result, emptyList()))
+        } catch (exception: Exception) { logger.warn("Could not show payout result for {}", run.playerUuid, exception) }
     }
 
     private fun restore(playerId: UUID): Boolean {

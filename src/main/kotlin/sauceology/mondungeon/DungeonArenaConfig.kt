@@ -18,6 +18,7 @@ class DungeonArenaConfig {
     var arena: DungeonPosition? = null
         private set
     val returnRetryTicks: Int
+    val spinTicks: Int
 
     init {
         Files.createDirectories(file.parent)
@@ -25,6 +26,11 @@ class DungeonArenaConfig {
             requireNotNull(javaClass.getResourceAsStream("/dungeon-arena.json")).use { Files.copy(it, file) }
         }
         root = Files.newBufferedReader(file).use { JsonParser.parseReader(it).asJsonObject }
+        val defaults = requireNotNull(javaClass.getResourceAsStream("/dungeon-arena.json")).bufferedReader().use {
+            JsonParser.parseReader(it).asJsonObject
+        }
+        spinTicks = (root.get("spinTicks") ?: defaults.get("spinTicks")).asBigDecimal.intValueExact()
+        require(spinTicks > 0) { "spinTicks must be positive" }
         returnRetryTicks = root.get("returnRetryTicks").asBigDecimal.intValueExact()
         require(returnRetryTicks > 0) { "returnRetryTicks must be positive" }
         root.get("arena")?.takeUnless { it.isJsonNull }?.asJsonObject?.let { data ->

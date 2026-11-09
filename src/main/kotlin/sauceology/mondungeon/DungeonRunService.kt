@@ -32,6 +32,14 @@ object DungeonRunService {
                 if (runs?.setArena(context.source.playerOrException) == true) 1 else 0
             })
             val root = dispatcher.register(literal("monDungeons")
+                .then(literal("checkrewards").requires { it.hasPermission(2) }.executes { context ->
+                    val problems = DungeonLootData.tables.values.flatMap { table ->
+                        DungeonPayout.problems(table).map { "${table.id}: $it" }
+                    }
+                    if (problems.isEmpty()) context.source.sendSuccess({ net.minecraft.network.chat.Component.literal("All dungeon prizes are available.") }, false)
+                    else problems.forEach { context.source.sendFailure(net.minecraft.network.chat.Component.literal(it)) }
+                    if (problems.isEmpty()) 1 else 0
+                })
                 .then(literal("exit").executes { context ->
                     if (runs?.exit(context.source.playerOrException) == true) 1 else 0
                 })

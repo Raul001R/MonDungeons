@@ -14,15 +14,46 @@ jobs:
         uses: actions/checkout@v6
       - name: validate gradle wrapper
         uses: gradle/actions/wrapper-validation@v6
-      - name: setup jdk
+      - name: setup game jdk
+        uses: actions/setup-java@v5
+        with:
+          java-version: '21'
+          distribution: 'microsoft'
+      - name: setup build jdk
         uses: actions/setup-java@v5
         with:
           java-version: '25'
           distribution: 'microsoft'
       - name: make gradle wrapper executable
         run: chmod +x ./gradlew
+      - name: download verified Gradle distribution
+        # The normal distribution endpoints currently return HTTP 504. This is
+        # the same official Gradle 9.5.1 archive, fetched through its release API.
+        run: |
+          curl --fail --location --retry 3 --connect-timeout 30 --max-time 300 \
+            --header 'Accept: application/octet-stream' \
+            'https://api.github.com/repos/gradle/gradle-distributions/releases/assets/418398387' \
+            --output "$RUNNER_TEMP/gradle-9.5.1-bin.zip"
+          echo "bafc141b619ad6350fd975fc903156dd5c151998cc8b058e8c1044ab5f7b031f  $RUNNER_TEMP/gradle-9.5.1-bin.zip" | sha256sum --check
+          unzip -q "$RUNNER_TEMP/gradle-9.5.1-bin.zip" -d "$RUNNER_TEMP/gradle"
+          echo "$RUNNER_TEMP/gradle/gradle-9.5.1/bin" >> "$GITHUB_PATH"
+      - name: download verified Kotlin compiler
+        # Maven's compiler JAR redirect also intermittently returns HTTP 504.
+        # Serve the checksum-verified official artifact through a CI-only repo.
+        run: |
+          compiler_dir="$RUNNER_TEMP/mondungeons-ci-maven/org/jetbrains/kotlin/kotlin-compiler-embeddable/2.4.20"
+          mkdir -p "$compiler_dir"
+          curl --fail --location --retry 3 --connect-timeout 30 --max-time 300 \
+            --header 'Accept: application/octet-stream' \
+            'https://api.github.com/repos/JetBrains/kotlin/releases/assets/587891620' \
+            --output "$compiler_dir/kotlin-compiler-embeddable-2.4.20.jar"
+          echo "cf97161430683fb9af96dc6a7017ffae1fe8737b80d12eee11f2fe3e76f8ded8  $compiler_dir/kotlin-compiler-embeddable-2.4.20.jar" | sha256sum --check
+          curl --fail --location --retry 3 --connect-timeout 30 --max-time 120 \
+            'https://repo.maven.apache.org/maven2/org/jetbrains/kotlin/kotlin-compiler-embeddable/2.4.20/kotlin-compiler-embeddable-2.4.20.pom' \
+            --output "$compiler_dir/kotlin-compiler-embeddable-2.4.20.pom"
+          echo "MONDUNGEONS_CI_MAVEN=$RUNNER_TEMP/mondungeons-ci-maven" >> "$GITHUB_ENV"
       - name: build
-        run: ./gradlew build
+        run: gradle --init-script .github/ci-repositories.gradle build -Dorg.gradle.java.installations.fromEnv=JAVA_HOME_21_X64,JAVA_HOME_25_X64
       - name: capture build artifacts
         uses: actions/upload-artifact@v7
         with:

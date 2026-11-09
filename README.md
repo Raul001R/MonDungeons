@@ -2,12 +2,14 @@
 
 Standalone Fabric/Kotlin addon for Minecraft 1.21.1 and Cobblemon 1.8.4.
 
-Stage five registers `mondungeons:dungeon_key` and adds a separate key roll to
+Stage six registers `mondungeons:dungeon_key` and adds a separate key roll to
 built-in vanilla `minecraft:chests/*` loot tables. Each newly generated chest has
 a default 1% key chance. Already generated loot is unchanged; datapack-replaced
 chest tables are respected. Using a tiered key opens the MonDungeons odds screen
 without consuming it. Start enters a ten-round trainer gauntlet in the configured
 arena, one player at a time. The arena remains unconfigured until you set it.
+Clearing all rounds pays one configured prize after a cosmetic spin and consumes
+one key. Unresolved reward IDs must be configured before a live run can start.
 The key uses Minecraft's trial-key texture as a temporary visual.
 
 Build with JDK 25: `./gradlew.bat build`. Development Minecraft launches use JDK 21.
@@ -175,8 +177,41 @@ Stage 5 gauntlet:
   without victory, or a failed next-round launch stop the tracked battle, discard
   its NPC, release the lock and return/queue the player through the existing
   recovery journal. Stage 7 remains the full failure-path audit.
-- Clearing round 10 currently returns you with your key and a completion message.
-  Reward roll, spin and key consumption are Stage 6.
+- Clearing round 10 rolls one prize on the server from the same table shown in
+  the menu, then opens the cosmetic spin. After `spinTicks` (default 100 / five
+  seconds), the server delivers the prize, consumes one matching key, returns you
+  and releases the lock. Closing the spin cannot reroll or prevent delivery.
+- Item rewards grant their configured count; Pokemon rewards enter your party
+  or overflow to your PC. `random shiny=true` grants an actual shiny Pokemon
+  from Cobblemon's implemented species. It does not restrict the roll to pseudo
+  legendaries. A missing key, insufficient inventory space or full Pokemon
+  storage fails delivery without consuming the key. Items are never dropped on
+  the arena floor as a fallback.
+
+Stage 6 reward configuration:
+
+- Run `/monDungeons checkrewards` as an admin to list every unavailable prize.
+  Start refuses an invalid positive-chance table before teleporting or consuming
+  anything. Invalid prizes are never silently omitted or replaced.
+- Mega Stones use the official `mega_showdown:mega_stone` item tag; Z-Crystals
+  use `mega_showdown:z_crystal`. These follow the installed mod's tag members,
+  including datapack additions, rather than maintaining guessed item names.
+  Verified against Mega Showdown 1.3.3 for MC1.21.1/Cobblemon1.8.4:
+  [upstream tags](https://github.com/yajatkaul/CobblemonMegaShowdown/tree/06b995dcf8ed8d0e51a65e206865838a184daeee/common/src/generated/data/mega_showdown/tags/item).
+- Wishing Star, Golem Scrap, Tera Shards and bottle caps use owner-supplied addon
+  IDs, requiring Mega Showdown, Legendary Monuments and the `obc` provider.
+  No TODO prize definitions remain in the bundled JSON. This development profile
+  still lacks these provider mods; use `/monDungeons checkrewards` on the actual
+  pack to verify all prizes before playing. Old server config files are preserved.
+- An item entry accepts exactly one of `"item": "namespace:id"`,
+  `"items": ["namespace:first", "namespace:second"]`, or
+  `"itemTag": "namespace:tag"` (no leading `#`). Lists/tags choose one unique
+  member uniformly after that prize wins, then grant `count` of that member.
+  The entry's original weight and group odds stay unchanged. Mega Stones,
+  Z-Crystals and Tera Shards use sets, not a single generic item.
+- Existing `config/mondungeons/dungeon-loot.json` files are preserved. Update
+  their entries explicitly and restart to load changes; bundled JSON changes
+  do not overwrite a server owner's configuration.
 
 Run `./gradlew.bat runGameTest -PrctCompat=true --offline` for the optional headless
 RCT integration tests. The profile adds pinned RCT 0.19.2-beta, RCT API 0.16.2-beta
@@ -197,5 +232,7 @@ To inspect the redesigned odds screen without loading a world, use
 preview uses local tier data and does not run in installed modpacks. START RUN
 is a visual-only button in preview mode; press L to toggle the occupied appearance
 and F8 at the title screen to reopen the preview.
+Use `-PraidUiPreview=spin` or `-PraidUiPreview=reward` to inspect the cosmetic
+spin and final reward screens without a world or actual payout.
 The live screen uses server-sent odds and real lock status. Smaller windows omit
 the optional example text if needed, while keeping all four tiers visible.
