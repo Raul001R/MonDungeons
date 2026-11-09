@@ -10,6 +10,7 @@ import net.minecraft.world.InteractionHand
 object RaidUi {
     fun register() {
         PayloadTypeRegistry.playS2C().register(RaidOddsPayload.TYPE, RaidOddsPayload.CODEC)
+        PayloadTypeRegistry.playS2C().register(RaidAvailabilityPayload.TYPE, RaidAvailabilityPayload.CODEC)
         PayloadTypeRegistry.playC2S().register(RaidStartPayload.TYPE, RaidStartPayload.CODEC)
         ServerPlayNetworking.registerGlobalReceiver(RaidStartPayload.TYPE) { payload, context ->
             context.server().execute { DungeonRunService.runs?.start(context.player(), payload.token) }
@@ -28,15 +29,10 @@ object RaidUi {
         }
         // The exact table selected by the held key is also the future payout source.
         val table = DungeonLootData.tables.getValue(tier.lootTableId)
-        val entries = table.rewards.map { reward ->
-            val data = reward.definition
-            val type = data.get("type").asString
-            val label = data.get("label")?.asString
-                ?: data.get(if (type == "item") "item" else "spec").asString
-            val count = if (type == "item") data.get("count").asInt else 1
-            RaidOddsEntry(if (count > 1) "$label x$count" else label, reward.probability)
-        }
+        val entries = RaidRewardMenu.entries(table)
         val token = DungeonRunService.runs?.offer(player, hand, stack) ?: return
-        ServerPlayNetworking.send(player, RaidOddsPayload(tier.id, entries, token))
+        val rounds = runCatching { DungeonRounds.load().rounds.size }.getOrDefault(0)
+        ServerPlayNetworking.send(player, RaidOddsPayload(tier.id, stack.hoverName.string, entries, token,
+            DungeonRunService.runs?.active != null, rounds))
     }
 }

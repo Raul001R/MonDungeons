@@ -1,0 +1,17 @@
+{
+    "name":  "mondungeons:trainers/brock",
+    "order":  0,
+    "variations":  [
+                       {
+                           "aspects":  [
+
+                                       ],
+                           "layers":  [
+
+                                      ],
+                           "model":  "cobblemon:trainer.geo",
+                           "poser":  "cobblemon:standard",
+                           "texture":  "rctmod:textures/trainers/single/leader_brock_019e.png"
+                       }
+                   ]
+}

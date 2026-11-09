@@ -4,6 +4,8 @@ import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback
 import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerEntityEvents
+import com.cobblemon.mod.common.entity.npc.NPCEntity
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents
 import net.minecraft.commands.Commands.literal
 import net.minecraft.server.level.ServerPlayer
@@ -22,14 +24,21 @@ object DungeonRunService {
         ServerLivingEntityEvents.AFTER_DEATH.register { entity, _ ->
             if (entity is ServerPlayer) runs?.disconnect(entity.uuid)
         }
+        ServerEntityEvents.ENTITY_LOAD.register { entity, _ ->
+            if (entity is NPCEntity && DungeonTrainer.TEMPORARY_TAG in entity.tags) entity.discard()
+        }
         CommandRegistrationCallback.EVENT.register { dispatcher, _, _ ->
-            dispatcher.register(literal("raiddungeon")
+            dispatcher.register(literal("setdungeon").requires { it.hasPermission(2) }.executes { context ->
+                if (runs?.setArena(context.source.playerOrException) == true) 1 else 0
+            })
+            val root = dispatcher.register(literal("monDungeons")
                 .then(literal("exit").executes { context ->
                     if (runs?.exit(context.source.playerOrException) == true) 1 else 0
                 })
                 .then(literal("setarena").requires { it.hasPermission(2) }.executes { context ->
                     if (runs?.setArena(context.source.playerOrException) == true) 1 else 0
                 }))
+            dispatcher.register(literal("mondungeons").redirect(root))
         }
     }
 }

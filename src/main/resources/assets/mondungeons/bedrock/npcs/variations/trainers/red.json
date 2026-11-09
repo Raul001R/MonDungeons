@@ -1,0 +1,17 @@
+{
+    "name":  "mondungeons:trainers/red",
+    "order":  0,
+    "variations":  [
+                       {
+                           "aspects":  [
+
+                                       ],
+                           "layers":  [
+
+                                      ],
+                           "model":  "cobblemon:trainer.geo",
+                           "poser":  "cobblemon:standard",
+                           "texture":  "rctmod:textures/trainers/single/trainer_red_0003.png"
+                       }
+                   ]
+}
