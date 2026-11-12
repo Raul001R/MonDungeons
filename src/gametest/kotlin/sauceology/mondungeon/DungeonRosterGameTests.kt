@@ -73,7 +73,31 @@ class DungeonRosterGameTests : FabricGameTest {
         check(errors.isEmpty()) { errors.joinToString("; ") }
         teams.zip(rounds).forEach { (team, round) ->
             check(team.size == round.teamSlots.size)
-            team.forEach { pokemon ->
+            val sourceId = net.minecraft.resources.ResourceLocation.parse("rctmod:trainers/${round.trainerId}.json")
+            val source = helper.level.server.resourceManager.getResource(sourceId).orElseThrow().openAsReader()
+                .use { JsonParser.parseReader(it).asJsonObject.getAsJsonArray("team") }
+            val stats = mapOf("hp" to com.cobblemon.mod.common.api.pokemon.stats.Stats.HP,
+                "atk" to com.cobblemon.mod.common.api.pokemon.stats.Stats.ATTACK,
+                "def" to com.cobblemon.mod.common.api.pokemon.stats.Stats.DEFENCE,
+                "spa" to com.cobblemon.mod.common.api.pokemon.stats.Stats.SPECIAL_ATTACK,
+                "spd" to com.cobblemon.mod.common.api.pokemon.stats.Stats.SPECIAL_DEFENCE,
+                "spe" to com.cobblemon.mod.common.api.pokemon.stats.Stats.SPEED)
+            team.forEachIndexed { index, pokemon ->
+                val original = source[round.teamSlots[index]].asJsonObject
+                stats.forEach { (key, stat) ->
+                    if (round.boss == null) {
+                        val sourceIv = original.getAsJsonObject("ivs")?.get(key)?.asInt ?: 0
+                        val sourceEv = original.getAsJsonObject("evs")?.get(key)?.asInt ?: 0
+                        check(pokemon.ivs[stat] == minOf(sourceIv, base.regularIvCap)) { "${round.name}: wrong $key IV" }
+                        check(pokemon.evs[stat] == (sourceEv * base.regularEvMultiplier).toInt()) { "${round.name}: wrong $key EV" }
+                    } else {
+                        check(pokemon.ivs[stat] == 31) { "${round.name}: boss must keep perfect IVs" }
+                        check(pokemon.evs[stat] == (round.boss.getAsJsonObject("evs").get(key)?.asInt ?: 0)) {
+                            "${round.name}: boss EV spread changed"
+                        }
+                    }
+                }
+                check(pokemon.currentHealth == pokemon.maxHealth) { "Stat changes must leave NPCs at full health" }
                 check(pokemon.types.any { it.name.equals(round.theme, true) }) { "${round.name}: wrong type ${pokemon.species.name}" }
                 val moves = pokemon.moveSet.getMoveTemplates()
                 check(moves.isNotEmpty() && moves.map { it.name }.distinct().size == moves.size)

@@ -26,7 +26,7 @@ object RctDungeonTeams {
             val team = definition.getAsJsonArray("team")
             round.teamSlots.map { slot ->
                 check(slot < team.size()) { "RCT team ${round.trainerId} has no slot $slot" }
-                create(team[slot].asJsonObject, round, balance).also { pokemon ->
+                create(team[slot].asJsonObject, round, balance, plan).also { pokemon ->
                     check(round.theme == null || pokemon.types.any { it.name.equals(round.theme, ignoreCase = true) }) {
                         "${round.name}: ${pokemon.species.name} (${pokemon.types.joinToString { it.name }}) does not match ${round.theme}"
                     }
@@ -35,7 +35,7 @@ object RctDungeonTeams {
         }
     }
 
-    private fun create(data: JsonObject, round: DungeonRound, balance: DungeonMoveBalance): Pokemon {
+    private fun create(data: JsonObject, round: DungeonRound, balance: DungeonMoveBalance, plan: DungeonRoundPlan): Pokemon {
         val species = data.get("species").asString
         val aspects = data.getAsJsonArray("aspects")?.joinToString(" ") { it.asString } ?: ""
         val properties = PokemonProperties.parse("$species $aspects").apply {
@@ -68,11 +68,14 @@ object RctDungeonTeams {
             check(this.species.showdownId().equals(species, ignoreCase = true)) { "Unknown RCT species $species" }
             stats.forEach { (key, stat) ->
                 val iv = if (boss?.get("perfectIVs")?.asBoolean == true) 31 else data.getAsJsonObject("ivs")?.get(key)?.asInt ?: 0
-                setIV(stat, iv)
+                setIV(stat, if (boss == null) minOf(iv, plan.regularIvCap) else iv)
                 setEV(stat, 0)
             }
             val evs = boss?.getAsJsonObject("evs") ?: data.getAsJsonObject("evs")
-            evs?.entrySet()?.forEach { (key, value) -> setEV(stats.getValue(key), value.asInt) }
+            evs?.entrySet()?.forEach { (key, value) ->
+                val ev = if (boss == null) (value.asInt * plan.regularEvMultiplier).toInt() else value.asInt
+                setEV(stats.getValue(key), ev)
+            }
             if (boss != null) {
                 // Populate the live set explicitly: property application/initialization can reorder
                 // or replace the moves declared during Pokemon construction.

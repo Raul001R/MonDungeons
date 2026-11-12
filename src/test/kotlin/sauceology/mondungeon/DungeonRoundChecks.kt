@@ -20,6 +20,19 @@ fun main() {
     check(plan.healAfterRounds == setOf(2, 4, 6, 8, 9))
     check(plan.rounds.any { it.format == "doubles" } && plan.rounds.any { it.format == "singles" })
     check(plan.rounds.last().level == 50 && plan.rounds.last().boss!!.get("scale").asFloat > 1)
+    check(plan.regularIvCap == 15 && plan.regularEvMultiplier == 0.5)
+    val oldStatsConfig = root.deepCopy().apply { remove("regularIvCap"); remove("regularEvMultiplier") }
+    check(DungeonRoundPlan.parse(oldStatsConfig) == plan) { "Existing configs must inherit gentler regular stats" }
+    val restoredStats = DungeonRoundPlan.parse(root.deepCopy().apply {
+        addProperty("regularIvCap", 31); addProperty("regularEvMultiplier", 1.0)
+    })
+    check(restoredStats.regularIvCap == 31 && restoredStats.regularEvMultiplier == 1.0)
+    listOf(-1, 32, 15.5).forEach { invalid ->
+        check(runCatching { DungeonRoundPlan.parse(root.deepCopy().apply { addProperty("regularIvCap", invalid) }) }.isFailure)
+    }
+    listOf(-0.1, 1.1, Double.NaN, Double.POSITIVE_INFINITY).forEach { invalid ->
+        check(runCatching { DungeonRoundPlan.parse(root.deepCopy().apply { addProperty("regularEvMultiplier", invalid) }) }.isFailure)
+    }
     val progress = DungeonRoundProgress(plan.rounds.size, plan.healAfterRounds)
     val heals = mutableListOf<Int>()
     var previousId = UUID.randomUUID()

@@ -1,6 +1,63 @@
 # Agent memory
 
+## Push version 1.0.2 (2026-11-11)
+- User explicitly requested pushing the local 1.0.2 balance/version changes.
+  Reviewed all eight changed files on bugfix/1.0.1; git diff --check passed.
+  Prior offline build and all 12 gameplay tests passed as recorded below;
+  no gameplay changes since that validation. Commit and push this branch,
+  leave main untouched, then verify GitHub CI for the pushed commit.
+
+## Version 1.0.2 (2026-11-10)
+- User requested version 1.0.2 for the gentler regular-trainer stat changes.
+  Updated gradle.properties version (Fabric metadata expands this value) and
+  README output filename. Historical 1.0.1 notes remain historical.
+- build --offline SUCCESS (16s), including admission/config/100-seed roster
+  checks. Packaged fabric.mod.json verified id=mondungeons, version=1.0.2.
+  Minecraft suite was not repeated for metadata-only change; previous 12 tests
+  passed for the same gameplay code. Artifact: build/libs/mondungeons-1.0.2.jar.
+  No push requested.
+
+## Gentler regular trainer stats (2026-11-10)
+- User chose a simple config balance pass instead of party-based difficulty:
+  modest ordinary IVs, about half RCT EV spreads, boss remains perfect.
+- Added dungeon-rounds.json regularIvCap=15 and regularEvMultiplier=0.5;
+  cap never raises lower source IVs, EVs round down per stat (252/252/6 becomes
+  126/126/3). Only disposable non-boss opponents are affected. Boss paths and
+  level/team/format/healing/move settings are preserved; no adaptive system.
+- Existing configs missing the fields inherit bundled defaults without being
+  overwritten. Use 31 / 1.0 to restore inherited RCT stats. README updated.
+- Extended existing config checks for upgrade fallback, overrides, invalid
+  ranges/non-finite multipliers; existing all-roster Minecraft test now checks
+  exact source-relative regular IVs/EVs and every boss's perfect IVs/full EVs.
+- Validation: build -PrctCompat=true --offline SUCCESS (2m49s), main/client/test/game
+  code; admission/config/100-seed roster checks passed. All 12 Minecraft tests
+  passed in 15.63s, including source-relative IV/EV verification for all 39
+  ordinary profiles and all 9 bosses. Packaged jar inspected: regular 15/0.5,
+  boss perfectIVs=true and 252HP/252Atk/6Spe. No human balance playthrough.
+- Work remains local on bugfix/1.0.1; no push requested. Artifact:
+  build/libs/mondungeons-1.0.1.jar.
+
+## Adaptive difficulty discussion (2026-11-10)
+- User reports friends still find the dungeon too hard and asks whether it can
+  scale to player stats. Inspected current gauntlet/team construction: fixed
+  round levels 32..50; ordinary opponents inherit RCT IVs/EVs, natures/abilities;
+  final bosses have perfect IVs and configured 510-total EV spreads.
+- Proposed party-based scaling calculated once at admission, considering stronger
+  party members' levels and training (IVs/EVs), with configurable round progression
+  and existing difficulty as an upper bound. Key tier remains unrelated to difficulty.
+- Discussion only; no difficulty code/config changed or build/runtime tests run.
+  Exact formula, team-size behavior, and tuning remain undecided. Preserve the
+  current healing schedule and prior user-requested boss behavior unless revised.
+
 ## Publish version 1.0.1 (2026-11-09)
+- Final chest update pushed139abad; repeat user-requested push confirmed
+  Everything up-to-date. Both current branch push checks SUCCESS:
+  42699278703(head139abad) and42698119465(head2c8d577). Working source was clean.
+  ChestShare rechecked: old unopened containers convert on opening; old opened
+  containers require mirror recovery or explicit per-chest convert. It changes
+  loot to per-player instances. MonDungeons compatibility remains untested;
+  installing alone does not backfill opened chests. This is a local handoff note
+  after the verified push; no extra docs-only CI run needed.
 - Pushed implementation as2c8d577 on origin/bugfix/1.0.1. Push CI run42698119465
   was in progress when new chest-rate request arrived; verify all new-head checks.
 - User then requested common keys10% and a way/mod for already-created chests.

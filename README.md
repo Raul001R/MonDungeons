@@ -37,7 +37,7 @@ compatibility-tested with MonDungeons. No additional mod was installed here.
 
 Build with JDK 25: `./gradlew.bat build`. Development Minecraft launches use JDK 21.
 The dependency/toolchain pins match the working custom-trainers reference project.
-Output: `build/libs/mondungeons-1.0.1.jar`. Install with Fabric API,
+Output: `build/libs/mondungeons-1.0.2.jar`. Install with Fabric API,
 Fabric Language Kotlin and Cobblemon on Minecraft 1.21.1.
 
 Commands use `/monDungeons` (`/mondungeons` is a lowercase alias):
@@ -197,6 +197,12 @@ Stage 5 gauntlet:
   varied type specialists, with the actual type shown in the round announcement.
   Bring at least two conscious Pokemon. A later doubles round also requires two
   conscious Pokemon; an exhausted party ends the attempt without consuming a key.
+- In `config/mondungeons/dungeon-rounds.json`, `regularIvCap: 15` caps ordinary
+  trainers' inherited IVs without raising lower values; `regularEvMultiplier: 0.5`
+  halves their RCT EV spreads, rounding down (252/252/6 becomes 126/126/3).
+  Older configs without these fields use the bundled defaults. Set the cap to 31
+  and multiplier to 1.0 to restore inherited RCT stats. Boss IVs/EVs stay configured
+  separately and are unaffected by these settings.
 - **Full-party healing follows rounds 2, 4, 6, 8 and 9.** The round-9 heal prepares
   the party for the boss. Roster `healBeforeBoss: true` also adds this heal to
   preserved older round configs. Health, status and PP

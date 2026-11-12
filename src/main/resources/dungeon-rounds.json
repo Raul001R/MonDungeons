@@ -1,5 +1,7 @@
 {
   "maxTrainerLevel": 50,
+  "regularIvCap": 15,
+  "regularEvMultiplier": 0.5,
   "healAfterRounds": [2, 4, 6, 8, 9],
   "interRoundDelayTicks": 60,
   "challengeDelayTicks": 40,
