@@ -9,7 +9,7 @@
                            "layers":  [
 
                                       ],
-                           "model":  "cobblemon:trainer.geo",
+                           "model":  "cobblemon:steve.geo",
                            "poser":  "cobblemon:standard",
                            "texture":  "rctmod:textures/trainers/single/elite_four_lance_0057.png"
                        }

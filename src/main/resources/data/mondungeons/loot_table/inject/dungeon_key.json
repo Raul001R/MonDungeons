@@ -2,7 +2,6 @@
   "type": "minecraft:chest",
   "pools": [{
     "rolls": 1,
-    "conditions": [{ "condition": "minecraft:random_chance", "chance": 0.01 }],
     "entries": [{ "type": "minecraft:loot_table", "value": "mondungeons:keys/tiers" }]
   }]
 }

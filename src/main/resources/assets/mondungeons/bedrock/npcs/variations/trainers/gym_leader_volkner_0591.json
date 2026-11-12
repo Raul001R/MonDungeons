@@ -1,0 +1,13 @@
+{
+  "name": "mondungeons:trainers/gym_leader_volkner_0591",
+  "order": 0,
+  "variations": [
+    {
+      "aspects": [],
+      "layers": [],
+      "model": "cobblemon:steve.geo",
+      "poser": "cobblemon:standard",
+      "texture": "rctmod:textures/trainers/single/gym_leader_volkner_0591.png"
+    }
+  ]
+}

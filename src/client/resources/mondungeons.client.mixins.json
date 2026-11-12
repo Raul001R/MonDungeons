@@ -3,7 +3,8 @@
 	"package": "sauceology.mondungeon.client.mixin",
 	"compatibilityLevel": "JAVA_21",
 	"client": [
-		"ExampleClientMixin"
+		"ExampleClientMixin",
+		"DungeonNpcRendererMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

@@ -1,0 +1,10 @@
+{
+  "enabled": true,
+  "regularMaxPower": 90,
+  "strongMovePower": 80,
+  "regularStrongMovePp": 2,
+  "bossStrongMovePp": 4,
+  "regularUtilityMoves": ["growl", "leer", "tailwhip", "scaryface", "sandattack", "smokescreen", "focusenergy", "reflect", "lightscreen", "mist", "safeguard", "haze", "defog", "sunnyday", "raindance", "snowscape", "sandstorm"],
+  "blockedRegularMoves": ["fissure", "guillotine", "horndrill", "sheercold", "explosion", "selfdestruct", "finalgambit", "destinybond", "endeavor", "counter", "mirrorcoat", "metalburst", "bide", "superfang", "naturesmadness", "ruination", "seismictoss", "nightshade", "psywave", "sonicboom", "dragonrage", "grassknot", "lowkick", "heavyslam", "heatcrash", "electroball", "gyroball", "storedpower", "powertrip", "ragefist", "lastrespects", "populationbomb", "doubleironbash", "tripleaxel", "triplekick", "beatup", "furycutter", "rollout", "iceball", "present", "magnitude", "spitup", "fling", "naturalgift", "punishment", "watershuriken", "bulletseed", "iciclespear", "rockblast", "pinmissile", "tailslap", "bonerush", "armthrust", "scaleshot", "surgingstrikes", "triplearrows", "facade", "acrobatics", "hex", "venoshock", "brine", "avalanche", "revenge", "retaliate", "payback", "assurance"],
+  "blockedRegularItems": ["cobblemon:choice_band", "cobblemon:choice_specs", "cobblemon:choice_scarf", "cobblemon:life_orb", "cobblemon:weakness_policy", "cobblemon:loaded_dice", "cobblemon:metronome"]
+}

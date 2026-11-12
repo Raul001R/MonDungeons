@@ -4,7 +4,8 @@ Standalone Fabric/Kotlin addon for Minecraft 1.21.1 and Cobblemon 1.8.4.
 
 MonDungeons registers `mondungeons:dungeon_key` and adds a separate key roll to
 built-in vanilla `minecraft:chests/*` loot tables. Each newly generated chest has
-a default 1% key chance. Already generated loot is unchanged; datapack-replaced
+a default 10% common-key chance (rare 4.167%, epic 2%, legendary 0.5%; one key
+maximum per chest roll, about 16.667% for any key). Already generated loot is unchanged; datapack-replaced
 chest tables are respected. Using a tiered key opens the MonDungeons odds screen
 without consuming it. Start enters a ten-round trainer gauntlet in the configured
 arena, one player at a time. The arena remains unconfigured until you set it.
@@ -12,9 +13,31 @@ Clearing all rounds pays one configured prize after a cosmetic spin and consumes
 one key. Unresolved reward IDs must be configured before a live run can start.
 The key uses Minecraft's trial-key texture as a temporary visual.
 
+Chest rates are configured in `config/mondungeons/dungeon-chests.json` with
+`commonKeyChance` (default `0.10`). Other tiers retain the relative `chestWeight`
+ratios in `dungeon-loot.json`. Restart after changing these settings. The new
+file is created on upgrades; existing reward/round/arena configs are preserved.
+
+Already-created world chests that still have an unrolled loot table get the new
+roll on their first opening, even in old chunks. Previously opened chests have
+lost that loot-table reference; a reload cannot regenerate their original loot.
+For a selected previously opened chest, an operator can add one random-tier key
+without replacing its contents using `/loot insert X Y Z loot mondungeons:inject/dungeon_key`.
+This is a guaranteed admin insertion, not the random world-chest chance. A full
+chest needs an empty slot. Do not apply loot-table replacement commands to player storage.
+
+For world-wide recovery, [ChestShare](https://modrinth.com/mod/chestshare/) supports
+Fabric 1.21.1 server-side and documents a recovery workflow for already-looted
+containers. Generate a separate mirror with the same seed/mods/world generation,
+export with `/chestshare export recovery`, then import on the live server with
+`/chestshare import recovery`. The author says import skips non-empty containers
+by default. Back up first and verify the mirror/export on a test copy. This also
+changes structure chests to per-player loot; it is optional and has not been
+compatibility-tested with MonDungeons. No additional mod was installed here.
+
 Build with JDK 25: `./gradlew.bat build`. Development Minecraft launches use JDK 21.
 The dependency/toolchain pins match the working custom-trainers reference project.
-Output: `build/libs/mondungeons-1.0.0.jar`. Install with Fabric API,
+Output: `build/libs/mondungeons-1.0.2.jar`. Install with Fabric API,
 Fabric Language Kotlin and Cobblemon on Minecraft 1.21.1.
 
 Commands use `/monDungeons` (`/mondungeons` is a lowercase alias):
@@ -141,30 +164,57 @@ Stage 5 gauntlet:
   It defines the rounds, levels, formats, RCT trainer IDs, team slots, AI skill,
   trainer offset, healing rounds and transition/recovery timing. It is read for
   each new attempt; no restart is needed for subsequent runs. Key tier changes
-  reward odds only; every key uses this same gauntlet.
+  reward odds only; every key uses the same difficulty and encounter pools.
+- Version 1.0.1 creates `config/mondungeons/dungeon-trainers.json` on first use,
+  including on upgraded servers. Each attempt selects nine distinct types from
+  eighteen themes, shuffles eligible team slots, and chooses one of nine giant
+  bosses. Levels, team sizes and singles/doubles stay defined by the round config.
+  Every selected Pokemon must actually have the announced type; dual types count.
+  A wrong-type configured slot refuses Start before acquiring the lock or moving
+  the player. Custom fixed rounds can specify `type` for the same validation.
+  Set roster `enabled` to false to use fixed configured teams. Dialogue intro,
+  defeat and victory lines are editable in the roster file.
+- `config/mondungeons/dungeon-moves.json` balances disposable opponents only.
+  Regular teams use legal learned/source moves up to 90 base power, at most one
+  mild utility move, and no listed oppressive moves or Choice/Life Orb items.
+  Attacks with at least 80 base power start with 2 PP (bosses: 4). This limits
+  total uses; it is not a turn cooldown. Bosses retain configured strong moves
+  and stats. All thresholds, item exclusions and move lists are configurable.
 - Each trainer visibly spawns in front of the arena entry, faces you, announces
   a challenge and starts battle automatically after a brief introduction.
   `challengeDelayTicks` controls this delay (default 40 ticks / 2 seconds); older
   configs without the field use the bundled default. Trainer offsets rotate with
   the direction saved by `/setdungeon` and stay anchored to that entry point.
-- Rounds use ten distinct RCT-backed trainer looks: Brock, Misty, Surge, Erika,
-  Koga, Sabrina, Blaine, Lance, Cynthia and Red for the boss. The skin resources
-  are referenced from installed RCT, not downloaded from player accounts.
+- Rounds use varied RCT-backed trainer looks with a player model matching their
+  64x64 skin layout, fixing the previous face UV mismatch. RCT skin resources
+  are referenced when available on the client. If RCT is server-only, clients
+  use varied built-in Minecraft skins instead. No skins are downloaded from
+  player accounts or bundled from RCT.
   `trainerAppearances`, `defaultAppearance`, `bossAppearance` and an optional
   per-round `appearance` are data-configurable; older configs inherit the bundled
   cast. NPCs retain the registered Cobblemon class and existing battle behavior.
-- Default levels rise from 32 to 50. Rounds 3, 6 and 8 are doubles. Types include
-  rock, water, electric, grass, poison, psychic, fire, dragon and a champion team.
+- Default levels rise from 32 to 50. Rounds 3, 6 and 8 are doubles. Each run uses
+  varied type specialists, with the actual type shown in the round announcement.
   Bring at least two conscious Pokemon. A later doubles round also requires two
   conscious Pokemon; an exhausted party ends the attempt without consuming a key.
-- **Full-party healing follows rounds 2, 4, 6 and 8 only.** Health, status and PP
+- In `config/mondungeons/dungeon-rounds.json`, `regularIvCap: 15` caps ordinary
+  trainers' inherited IVs without raising lower values; `regularEvMultiplier: 0.5`
+  halves their RCT EV spreads, rounding down (252/252/6 becomes 126/126/3).
+  Older configs without these fields use the bundled defaults. Set the cap to 31
+  and multiplier to 1.0 to restore inherited RCT stats. Boss IVs/EVs stay configured
+  separately and are unaffected by these settings.
+- **Full-party healing follows rounds 2, 4, 6, 8 and 9.** The round-9 heal prepares
+  the party for the boss. Roster `healBeforeBoss: true` also adds this heal to
+  preserved older round configs. Health, status and PP
   carry over through other rounds. No automatic heal occurs on entry. Victory
   transitions wait for battle cleanup before healing or starting the next round.
-- Round 10 is **Titan Garchomp**, a single level-50 Pokemon at 3x normal scale,
-  with perfect IVs, 252 HP / 252 Attack / 6 Speed EVs, Leftovers, Earthquake,
-  Dragon Claw, Swords Dance and Stone Edge. Size is visual; its battle strength
+- Round 10 selects a **Titan** (including Garchomp, Dragonite, Salamence,
+  Tyranitar, Metagross, Arcanine, Rhyperior, Snorlax or Gyarados): one level-50
+  Pokemon at 3x normal scale with perfect IVs, offensive EVs and Leftovers.
+  Size is visual; its battle strength
   comes from level, stats, held item, moves and AI. This is not Mega Evolution or
-  a dependency on the Rift mod. All boss settings are in the round config.
+  a dependency on the Rift mod. Base boss settings are in the round config;
+  variant species, moves and EVs are in the roster config.
 - RCT team definitions are read from the installed mod/datapack resources, then
   instantiated as disposable Cobblemon NPC teams. This reuses RCT's teams without
   granting its story progress, trainer drops or card rewards. No native player
@@ -250,9 +300,10 @@ Stage 7 recovery:
 Run `./gradlew.bat runGameTest -PrctCompat=true --offline` for the optional headless
 RCT integration tests. The profile adds pinned RCT 0.19.2-beta, RCT API 0.16.2-beta
 and their dependencies only to development runtime; none are packaged or made
-mandatory in mod metadata. Tests inspect all installed teams and the oversized
-boss, then exercise real singles/doubles battle starts with synthetic victory
-events through all ten transitions and check the healing schedule. They do not
+mandatory in mod metadata. Tests inspect all 39 roster profiles and nine bosses,
+actual form types, legal moves, PP limits, and skin/model dimensions, then
+exercise real singles/doubles battle starts with synthetic victory events
+through all ten transitions and check healing, including before the boss. They do not
 simulate a human playing ten battles. Normal builds run the dependency-free
 admission and round progression checks without installing RCT.
 

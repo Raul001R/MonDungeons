@@ -8,6 +8,7 @@ import sauceology.mondungeon.RaidPayoutPayload
 
 object MonDungeonsClient : ClientModInitializer {
 	override fun onInitializeClient() {
+		DungeonNpcTextures.register()
 		RaidOddsPreview.register()
 		ClientPlayNetworking.registerGlobalReceiver(RaidPayoutPayload.TYPE) { payload, context ->
             context.client().setScreen(RaidSpinScreen(payload))

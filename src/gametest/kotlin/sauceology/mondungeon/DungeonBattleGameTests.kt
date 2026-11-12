@@ -212,6 +212,14 @@ class DungeonBattleGameTests : FabricGameTest {
                     val challenger = battle.actors.single { player.uuid in it.getPlayerUUIDs() }
                     val trainer = battle.actors.single { player.uuid !in it.getPlayerUUIDs() }
                     check(trainer.pokemonList.all { it.effectedPokemon.level == plan.rounds[round - 1].level })
+                    val movePolicy = DungeonMoveBalance.load()
+                    trainer.pokemonList.forEach { opponent ->
+                        opponent.effectedPokemon.moveSet.filter { it.power >= movePolicy.strongMovePower }.forEach {
+                            check(it.currentPp <= if (round == 10) movePolicy.bossStrongMovePp else movePolicy.regularStrongMovePp) {
+                                "Native battle start reset the dungeon PP limit"
+                            }
+                        }
+                    }
                     check(battle.format.battleType == (if (plan.rounds[round - 1].format == "doubles")
                         com.cobblemon.mod.common.battles.BattleFormat.GEN_9_DOUBLES.battleType else
                         com.cobblemon.mod.common.battles.BattleFormat.GEN_9_SINGLES.battleType))
