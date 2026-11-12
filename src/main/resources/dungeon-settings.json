@@ -1,0 +1,17 @@
+{
+  "runs": {
+    "roundsByTier": {
+      "common": 3,
+      "rare": 5,
+      "epic": 7,
+      "legendary": 10
+    }
+  },
+  "trainers": {
+    "regularIvCap": 15,
+    "regularEvMultiplier": 0.5
+  },
+  "leaderboard": {
+    "pageSize": 8
+  }
+}

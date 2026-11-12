@@ -101,6 +101,7 @@ class DungeonBattleGameTests : FabricGameTest {
         val commands = helper.level.server.commands.dispatcher.root
         val root = requireNotNull(commands.getChild("monDungeons"))
         check(root.getChild("exit") != null && root.getChild("setarena") != null)
+        check(root.getChild("config")?.getChild("set") != null && root.getChild("config")?.getChild("reload") != null)
         check(commands.getChild("mondungeons")?.redirect === root)
         check(commands.getChild("raiddungeon") == null)
         check(commands.getChild("setdungeon") != null)
@@ -131,7 +132,7 @@ class DungeonBattleGameTests : FabricGameTest {
                 check(entries.single { it.id == "jackpot" }.options.any { it.kind == "random_shiny" })
                 entries.forEach { group -> check(group.examples.size == group.options.size) }
                 val payload = RaidOddsPayload(tier.id, "Custom ${tier.id} key", entries,
-                    "bound-start-token", occupied, DungeonRounds.load().rounds.size)
+                    "bound-start-token", occupied, DungeonSettingsConfig.current.plan(tier.id, DungeonRounds.load()).rounds.size)
                 val buffer = net.minecraft.network.RegistryFriendlyByteBuf(io.netty.buffer.Unpooled.buffer(), helper.level.registryAccess())
                 try {
                     RaidOddsPayload.CODEC.encode(buffer, payload)
@@ -212,6 +213,14 @@ class DungeonBattleGameTests : FabricGameTest {
                     val challenger = battle.actors.single { player.uuid in it.getPlayerUUIDs() }
                     val trainer = battle.actors.single { player.uuid !in it.getPlayerUUIDs() }
                     check(trainer.pokemonList.all { it.effectedPokemon.level == plan.rounds[round - 1].level })
+                    val movePolicy = DungeonMoveBalance.load()
+                    trainer.pokemonList.forEach { opponent ->
+                        opponent.effectedPokemon.moveSet.filter { it.power >= movePolicy.strongMovePower }.forEach {
+                            check(it.currentPp <= if (round == 10) movePolicy.bossStrongMovePp else movePolicy.regularStrongMovePp) {
+                                "Native battle start reset the dungeon PP limit"
+                            }
+                        }
+                    }
                     check(battle.format.battleType == (if (plan.rounds[round - 1].format == "doubles")
                         com.cobblemon.mod.common.battles.BattleFormat.GEN_9_DOUBLES.battleType else
                         com.cobblemon.mod.common.battles.BattleFormat.GEN_9_SINGLES.battleType))

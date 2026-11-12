@@ -9,7 +9,7 @@
                            "layers":  [
 
                                       ],
-                           "model":  "cobblemon:trainer.geo",
+                           "model":  "cobblemon:steve.geo",
                            "poser":  "cobblemon:standard",
                            "texture":  "rctmod:textures/trainers/single/leader_lt_surge_01a0.png"
                        }

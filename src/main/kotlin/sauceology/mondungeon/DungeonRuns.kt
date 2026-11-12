@@ -15,13 +15,14 @@ data class ActiveDungeon(val playerUuid: UUID, val keyTierId: String, val return
                          val key: ItemStack, val table: DungeonRewardTable, var currentRound: Int = 1,
                          var payout: RolledDungeonReward? = null, var spinRemaining: Int = 0,
                          val runId: UUID = UUID.randomUUID())
-private data class RaidOffer(val token: String, val hand: InteractionHand, val key: ItemStack)
+private data class RaidOffer(val token: String, val hand: InteractionHand, val key: ItemStack, val roundCount: Int)
 
 /** One instance per server. Network callbacks and lifecycle events run on its server thread. */
 class DungeonRuns(private val server: MinecraftServer,
     internal val recovery: DungeonReturnRecovery = DungeonReturnRecovery(server),
     private val rewardTable: (DungeonKeyTier) -> DungeonRewardTable = { DungeonLootData.tables.getValue(it.lootTableId) },
-    private val presentation: DungeonPresentation = NetworkDungeonPresentation) {
+    private val presentation: DungeonPresentation = NetworkDungeonPresentation,
+    val leaderboard: DungeonLeaderboard = DungeonLeaderboard(server)) {
     private val config = DungeonArenaConfig()
     private val offers = mutableMapOf<UUID, RaidOffer>()
     private val logger = LoggerFactory.getLogger("mondungeons/runs")
@@ -37,7 +38,9 @@ class DungeonRuns(private val server: MinecraftServer,
 
     fun offer(player: ServerPlayer, hand: InteractionHand, stack: ItemStack): String {
         val token = UUID.randomUUID().toString()
-        offers[player.uuid] = RaidOffer(token, hand, stack.copy())
+        val tier = requireNotNull(DungeonItems.tier(stack))
+        val count = DungeonSettingsConfig.current.plan(tier.id, DungeonRounds.load()).rounds.size
+        offers[player.uuid] = RaidOffer(token, hand, stack.copy(), count)
         return token
     }
 
@@ -67,10 +70,11 @@ class DungeonRuns(private val server: MinecraftServer,
         if (!level.worldBorder.isWithinBounds(pos) || pos.y < level.minBuildHeight || pos.y >= level.maxBuildHeight) {
             return tell(player, "arena_unavailable")
         }
-        val prepared = try { gauntlet.prepare(player) } catch (exception: Exception) {
+        val prepared = try { gauntlet.prepare(player, tier.id) } catch (exception: Exception) {
             logger.error("Dungeon trainer/party preflight failed", exception)
             return tell(player, "trainers_unavailable")
         }
+        if (prepared.plan.rounds.size != offer.roundCount) return tell(player, "settings_changed")
         val origin = DungeonPosition.capture(player)
         val run = ActiveDungeon(player.uuid, tier.id, origin, held.copyWithCount(1), table)
         try {
@@ -232,6 +236,10 @@ class DungeonRuns(private val server: MinecraftServer,
             if (!move(player, entry.origin)) return false
             if ((player as DungeonPayoutReceipt).mondungeonsGetReceipt() != entry.runId.toString()) {
                 entry.payoutPokemon?.let { DungeonPayoutCommit.removePokemon(player, it) }
+            } else {
+                // The paid receipt is durable before credit. Keep the return obligation until credit
+                // is also durable so a crash or write failure can retry without a second payout/clear.
+                leaderboard.record(player.uuid, player.gameProfile.name, entry.runId)
             }
             // Save the restored player before clearing their durable return obligation.
             DungeonDurableFiles.savePlayer(player)

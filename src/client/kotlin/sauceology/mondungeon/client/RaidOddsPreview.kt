@@ -26,7 +26,8 @@ internal object RaidOddsPreview {
                 val entries = sauceology.mondungeon.RaidRewardMenu.entries(DungeonLootData.tables.getValue(tier.lootTableId))
                 val name = tier.id.replaceFirstChar { it.uppercase() } + " Dungeon Key"
                 client.setScreen(RaidOddsScreen(RaidOddsPayload(tier.id, name, entries, "", false,
-                    sauceology.mondungeon.DungeonRounds.load().rounds.size), preview = true))
+                    sauceology.mondungeon.DungeonSettings.parse(sauceology.mondungeon.DungeonSettings.defaults())
+                        .plan(tier.id, sauceology.mondungeon.DungeonRounds.load()).rounds.size), preview = true))
                 org.slf4j.LoggerFactory.getLogger("mondungeons/ui-preview").info("Opened {} odds preview", tier.id)
             }
         }

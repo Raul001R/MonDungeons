@@ -1,5 +1,286 @@
 # Agent memory
 
+## Push version 1.1.0 (2026-11-11)
+- User explicitly requested pushing the completed 1.1.0 update to Git.
+  Commit the reviewed source, tests, resources, README and handoff on
+  feature/1.1.0-tier-rounds, then push that branch; leave main untouched.
+  git diff --check passed. Prior full build, all 14 integration tests and
+  client preview checks passed as recorded below; no gameplay edits since.
+  Verify GitHub Actions for the pushed commit after publishing the branch.
+
+## Version 1.1.0 tier rounds, console settings and leaderboard (2026-11-11)
+- User approved a boss included in every tier's round count, then requested a GUI
+  leaderboard for most dungeon clears. Implement on feature/1.1.0-tier-rounds;
+  version 1.1.0. New update has not been committed or pushed.
+- Default common/rare/epic/legendary plans: 3/5/7/10 rounds = first 2/4/6/9
+  ordinary templates plus the final boss template. Preserve template levels,
+  formats, giant perfect boss, randomized typed roster and pre-boss heal on each
+  tier. Menu sends the server's tier-specific count; outdated-length offers are
+  rejected before entry. Runs keep their prepared settings after console edits.
+- New grouped config/mondungeons/dungeon-settings.json: runs.roundsByTier,
+  trainers.regularIvCap/regularEvMultiplier, leaderboard.pageSize. Operator-level-2
+  monDungeons config get [path], set <path> <value>, reload work from console;
+  lowercase alias retained. Validate before saving/publishing; atomic replacement,
+  backups, missing-option fill, initial migration of legacy IV/EV settings without
+  rewriting old round files. Detailed resources retain their prior loading rules.
+- Leaderboard button opens paginated server rankings with Back, empty/loading
+  states and occupancy forwarding to the parent menu. Persistent totals by UUID
+  in world/data/mondungeons_leaderboard.dat; descending clears then name/UUID.
+  Counts only paid receipts; return recovery journals retry leaderboard writes
+  before forgetting the run. Replaying the same pending run never credits twice.
+  A credit write failure still returns the player and releases the run lock.
+  Previous versions did not persist historical clear totals.
+- Validation in progress. New dependency-free checks passed: 400 seeded tier
+  plans, final bosses/heals, upgrade, persistence, invalid edits and frozen plans.
+  Initial integration pass: 13/14 passed, one new test incorrectly assumed normal
+  Pokemon scaleModifier == 1. Real dependency bytecode shows initializeScale()
+  runs for unspecified scales; corrected test to check regular IVs instead.
+  Updated suite also covers all four complete runs/payouts/clear counts, console
+  permissions/persistence, ranking/pagination/reload/dedup and injected credit I/O
+  failure recovery. Final full build and GUI visual check pending.
+- FINAL: build -PrctCompat=true --offline SUCCESS (1m31s); all 14 required
+  Minecraft integration tests PASS (23.11s). Complete 3/5/7/10-round runs each
+  reached a level-50 giant perfect-IV boss, healed before it, paid once, consumed
+  one key, restored origin/released lock, and credited one clear (four total).
+  Outdated menu rejection and existing failure/recovery checks passed. Tests use
+  real native battle starts with synthetic victories, not a human balance run.
+  Log: build/1.1.0-validation-final.log. Packaged metadata/default settings/new
+  classes inspected in build/libs/mondungeons-1.1.0.jar, version verified 1.1.0.
+- Client preview without RCT PASS: common menu shows 3 rounds including final
+  boss and Leaderboard beside Start; populated leaderboard with preview-only
+  sample players renders aligned names/totals; Back returns to the key menu.
+  Wide screens inspected: build/1.1.0-key-menu.png and build/1.1.0-leaderboard.png.
+  Compact key menu also inspected: build/1.1.0-key-menu-compact.png. Development
+  client closed normally (session 85307 exit 0), no world opened. Live multiplayer
+  leaderboard screen was not manually exercised; codec/data/payout tests passed.
+  README documents settings, commands, upgrade rules, total-clear tracking and
+  historical-count limitation. Remaining: optional human balance/multiplayer check;
+  no commit/push of 1.1.0 requested yet. Main remains untouched.
+
+## Next update example requested (2026-11-11)
+- User requests common/rare/epic/legendary runs of 3/5/7/10 rounds, a suitable
+  version bump, and settings editable through server-console commands. Explicitly
+  asks for an example first: do not implement until the example is discussed.
+- Proposed feature version 1.1.0, grouped settings with runs.roundsByTier and
+  trainers IV/EV settings; console config get/set/reload commands, persisted
+  changes applying to future runs. Reference gym mod uses grouped JSON and
+  /gym config reload. These dungeon commands do not exist yet.
+- Boss placement for shorter runs needs user clarification. User's new tier-based
+  length requirement supersedes the original same-length rule for every tier.
+
+## Push version 1.0.2 (2026-11-11)
+- Final CI verified SUCCESS for run 43149107342, exact pushed SHA 85b8035.
+- Pushed commit 85b8035226e025386ce0591b76c14f30608d71b7 to origin/bugfix/1.0.1.
+  Source clean after push. GitHub Actions run 43149107342 matches this exact SHA;
+  last checked in progress at build step, prerequisite steps passed. CI final
+  outcome remains unverified: https://github.com/Raul001R/MonDungeons/actions/runs/43149107342
+- User explicitly requested pushing the local 1.0.2 balance/version changes.
+  Reviewed all eight changed files on bugfix/1.0.1; git diff --check passed.
+  Prior offline build and all 12 gameplay tests passed as recorded below;
+  no gameplay changes since that validation. Commit and push this branch,
+  leave main untouched, then verify GitHub CI for the pushed commit.
+
+## Version 1.0.2 (2026-11-10)
+- User requested version 1.0.2 for the gentler regular-trainer stat changes.
+  Updated gradle.properties version (Fabric metadata expands this value) and
+  README output filename. Historical 1.0.1 notes remain historical.
+- build --offline SUCCESS (16s), including admission/config/100-seed roster
+  checks. Packaged fabric.mod.json verified id=mondungeons, version=1.0.2.
+  Minecraft suite was not repeated for metadata-only change; previous 12 tests
+  passed for the same gameplay code. Artifact: build/libs/mondungeons-1.0.2.jar.
+  No push requested.
+
+## Gentler regular trainer stats (2026-11-10)
+- User chose a simple config balance pass instead of party-based difficulty:
+  modest ordinary IVs, about half RCT EV spreads, boss remains perfect.
+- Added dungeon-rounds.json regularIvCap=15 and regularEvMultiplier=0.5;
+  cap never raises lower source IVs, EVs round down per stat (252/252/6 becomes
+  126/126/3). Only disposable non-boss opponents are affected. Boss paths and
+  level/team/format/healing/move settings are preserved; no adaptive system.
+- Existing configs missing the fields inherit bundled defaults without being
+  overwritten. Use 31 / 1.0 to restore inherited RCT stats. README updated.
+- Extended existing config checks for upgrade fallback, overrides, invalid
+  ranges/non-finite multipliers; existing all-roster Minecraft test now checks
+  exact source-relative regular IVs/EVs and every boss's perfect IVs/full EVs.
+- Validation: build -PrctCompat=true --offline SUCCESS (2m49s), main/client/test/game
+  code; admission/config/100-seed roster checks passed. All 12 Minecraft tests
+  passed in 15.63s, including source-relative IV/EV verification for all 39
+  ordinary profiles and all 9 bosses. Packaged jar inspected: regular 15/0.5,
+  boss perfectIVs=true and 252HP/252Atk/6Spe. No human balance playthrough.
+- Work remains local on bugfix/1.0.1; no push requested. Artifact:
+  build/libs/mondungeons-1.0.1.jar.
+
+## Adaptive difficulty discussion (2026-11-10)
+- User reports friends still find the dungeon too hard and asks whether it can
+  scale to player stats. Inspected current gauntlet/team construction: fixed
+  round levels 32..50; ordinary opponents inherit RCT IVs/EVs, natures/abilities;
+  final bosses have perfect IVs and configured 510-total EV spreads.
+- Proposed party-based scaling calculated once at admission, considering stronger
+  party members' levels and training (IVs/EVs), with configurable round progression
+  and existing difficulty as an upper bound. Key tier remains unrelated to difficulty.
+- Discussion only; no difficulty code/config changed or build/runtime tests run.
+  Exact formula, team-size behavior, and tuning remain undecided. Preserve the
+  current healing schedule and prior user-requested boss behavior unless revised.
+
+## Publish version 1.0.1 (2026-11-09)
+- Final chest update pushed139abad; repeat user-requested push confirmed
+  Everything up-to-date. Both current branch push checks SUCCESS:
+  42699278703(head139abad) and42698119465(head2c8d577). Working source was clean.
+  ChestShare rechecked: old unopened containers convert on opening; old opened
+  containers require mirror recovery or explicit per-chest convert. It changes
+  loot to per-player instances. MonDungeons compatibility remains untested;
+  installing alone does not backfill opened chests. This is a local handoff note
+  after the verified push; no extra docs-only CI run needed.
+- Pushed implementation as2c8d577 on origin/bugfix/1.0.1. Push CI run42698119465
+  was in progress when new chest-rate request arrived; verify all new-head checks.
+- User then requested common keys10% and a way/mod for already-created chests.
+  New dungeon-chests.json commonKeyChance0.10 derives overall16.667% using existing
+  60/25/12/3weights => common10%, rare4.167%, epic2%, legendary0.5%. Keep at most
+  one key per natural chest roll. Applies on upgrades without overwriting configs.
+  Rate condition moved to injected chest pool; inject/dungeon_key is now a direct
+  single random-tier roll so vanilla /loot insert X Y Z loot ... can add a key
+  to an explicitly selected existing chest without replacing its inventory.
+- Research: unopened existing vanilla loot-table chests already get injection on
+  first roll; opened chests lose original LootTable reference. ChestShare official
+  Modrinth page supports Fabric1.21.1/server-only and mirror-world export/import
+  recovery for old looted containers, skips non-empty by default. Documented as
+  optional, untested compatibility, no mod installed. Source:
+  https://modrinth.com/mod/chestshare/ . LootRestock current published versions
+  start1.21.7, so do not recommend that jar for1.21.1.
+- Earlier push2c8d577 CI42698119465 SUCCESS. Chest changes: offline build PASS19s;
+  all12Minecraft tests PASS17.76s, including5000actual simple_dungeon loot rolls
+  (common8-12% acceptance around target10%, at most1key), and real vanilla
+  /loot insert into previously filled chest preserves its7diamonds and adds1key.
+  New chest config created separately so old loot/arena/round files are untouched.
+- User explicitly requested push after local implementation/validation finished.
+  Commit the tested changes on bugfix/1.0.1 and push that feature branch; keep main
+  untouched. Local build and all11Minecraft integration tests passed; client
+  missing-RCT skin fallback visually verified. Check remote CI after push.
+
+## Version 1.0.1 variety/dialogue/skin fixes (2026-11-09, implemented locally)
+- User additionally requires a full-party heal immediately before the boss.
+  Add round9 to healing (2/4/6/8/9); new roster config healBeforeBoss=true
+  applies this to preserved older round configs too. Implemented and runtime-verified.
+- Additional user requirement: every Pokemon must match the round's advertised
+  type. User encountered pure Steel in a Dragon round. Dual types qualify only
+  when one actual type matches (Dragon/Steel yes, pure Steel no). RCT trainer
+  labels are not sufficient: validate actual Cobblemon species/form types when
+  building theme pools and teams, including randomly selected slots. UI/round
+  announcements must use the selected theme. Reject invalid configured teams
+  before teleport/lock rather than silently fielding an off-theme Pokemon.
+  Review roster eligibility: filtering off-theme slots can reduce team sizes,
+  so preserve required round counts without duplicating slots or guessing types.
+  Implemented and runtime-verified; see results below.
+- Additional user request: reduce spamming of overpowered moves. Current team
+  builder copies competitive RCT movesets unchanged and uses native battle AI.
+  Include configurable, species-appropriate move balancing in 1.0.1: reduce
+  oppressive regular-trainer moves/combos and repetitive move selection where
+  supported by the real battle API. Keep the giant final boss challenging.
+  Implemented as legal balanced movesets and native PP budgets below; no AI
+  turn cooldown or global player move restrictions.
+- User says fainting stall resolved and may have been one-off. Pause that
+  investigation; no unproven battle-engine patch. Initial regression test and
+  build.gradle registration are preserved in stash named Paused unconfirmed
+  faint-switch investigation on fix/dungeon-faint-switch. They are NOT on release.
+- User requested version1.1, immediately corrected to1.0.1. Branch bugfix/1.0.1
+  from publishedcc21406; metadata version now1.0.1. No push requested yet.
+- Requested varied Pokemon/types each run, NPC dialogue, missing faces. This
+  explicitly changes prior fixed-roster behavior; preserve10rounds, level curve,
+  doubles slots,2/4/6/8heals, free retries, key-tier-independent difficulty and
+  giant strong final boss. Plan data-driven per-run theme/team/boss pools.
+- Read AGENTS.md/memory.md. Found actual UV mismatch: selected Cobblemon
+  trainer.geo texture64x128, RCT skins64x64. Cobblemon's native player variation
+  uses steve.geo/alex.geo with same standard poser. Use compatible player model.
+- Current skins also point to rctmod assets, absent if RCT not on client. RCT
+  is optional for addon load but required SERVER runtime for trainer teams.
+  Do NOT bundle vendor skin PNGs. Current RCT project license differs from its
+  older JAR metadata; preserve resource references and use eight built-in vanilla
+  player skins as a client-only missing-resource fallback. No hard RCT dependency.
+- Implemented and locally validated: roster with18actual type themes,
+  39trainer profiles/9giant bosses, distinct themes per attempt, randomized
+  eligible slots, typed announcements and intro/win/loss dialogue. Added preflight
+  actual-form type validation before lock/teleport. Fixed the finished-round
+  dialogue lookup to use RoundAdvance.finishedRound instead of advanced counter.
+- dungeon-moves.json config: regular max90base power, at most1mild utility,
+  species-legal source/level-up moves, explicit oppressive/variable-power move
+  exclusions, competitive item exclusions. Moves>=80power start2PP, bosses4PP;
+  total-use cap, NOT turn cooldown; no player move changes or engine interception.
+- Changed own NPC variants to Cobblemon steve.geo (player UV layout, not Steve
+  skin); added resource-reload-aware missing-texture fallback for server-onlyRCT.
+  Concrete NPCRenderer.getTextureLocation name checked against raw production JAR.
+- First build/100seed roster checks PASS before latest heal changes. Runtime
+  tests caught case-sensitive ElementalType.name (Rock vs rock), corrected; next
+  run caught optional Mega Stone fallback being removed with Life Orb, corrected
+  to resolve installed source alternatives first then apply item exclusions.
+  Final runtime suite checks all39profiles/9bosses and original10tests; results below.
+- Full build with -PrctCompat=true --offline PASS (1m22s); all11Minecraft tests
+  PASS (12.82s test execution). All39trainer profiles/9bosses validated for real
+  form types, legal balanced moves, PP caps, skins64x64/modelcompatibility;
+  pureSteel Melmetal rejected inDragon, Dragon/Steel Dialga accepted. Native
+  battle starts preserve PP caps. Full run coordinator verifies party healed
+  before boss after deliberately injuring party following round9; original
+  payout/return/key/lock failure regressions pass. Log build/1.0.1-validation.log.
+- Expanded species surfaced older strict display-name comparison (Mr.Mime,
+  Mr.Rime, Porygon-Z, TapuFini); corrected to Species.showdownId(). Explicitly
+  populate live boss MoveSet after creation and validate every move against actual
+  species/form learnset; all9boss movesets verified. No Showdown turn patch.
+- Client verification completed without RCT installed locally. Renderer selector
+  uses @Desc with remappable class literals to select the concrete NPC overload
+  without accidentally matching the generic Entity bridge in development.
+- Client rendering verification PASS without localRCT: launched normal devclient,
+  created separate creative superflat world "1.0.1 NPC Visual Test" (no existing
+  world opened). Summoned stationary MonDungeons Brock/Misty appearance samples;
+  both rendered distinct vanilla fallback skins with visible correct faces.
+  Screenshot inspected: build/1.0.1-npc-faces.png. All50skin resources confirmed
+  64x64; sourceRCT model UV fix uses the matching native player model. Client
+  selector applied successfully with @Desc. No vendor PNGs bundled/distributed.
+- Development preview client closed normally and test world saved; user Minecraft
+  processes/worlds left alone. No push requested for this branch. Final build
+  refreshes the packaged jar after the @Desc client selector change.
+- FINAL: build --offline PASS47s, including100seed roster/config/admission
+  checks and old-config pre-boss-heal regression. Artifact:
+  build/libs/mondungeons-1.0.1.jar. Packaged @Desc selector inspected with javap:
+  correct concrete NPC argument and production intermediary ResourceLocation
+  return class_2960. All11Minecraft integration tests passed on final server code;
+  latest changes after that were the client selector (tested in-world), unit
+  check, docs/memory. Work is local on bugfix/1.0.1, uncommitted/unpushed.
+  Remaining validation limit: no human full-modpack10battle playthrough; native
+  transition/payout tests use synthetic wins. No unproven faint-engine fix.
+
+## Reported faint/replacement stall (2026-11-09, paused by user)
+- User supplied server excerpt: repeated Pokemon entity KILLED/DISCARDED section
+  warnings, XP-cap debug and NPC PokemonList prints; no explicit battle exception.
+  Friend had3Pokemon, one fainted,2healthy remained; no replacement prompt and
+  NPC stopped. Round not confirmed. Do not assume exhausted party or doubles.
+- Branch fix/dungeon-faint-switch from published Stage7cc21406. Preserved local
+  CI validation memory update. Read AGENTS.md/memory.md and actual Cobblemon1.8.4
+  bytecode; reference dumps in ignored build/faint-switch-reference.
+- Native FaintInstruction awaits recallWithAnimation future before faint packet
+  and subsequent requests. Entity-removal/recall future is a hypothesis, not yet
+  proven. Prior synthetic-victory tests never exercised real faint/forced switch.
+- Adding actual Showdown-turn regression tests for singles/doubles with3player
+  Pokemon and healthy reserves. Need reproduce before fixing; no gameplay change
+  yet. /monDungeons exit remains the immediate safe abort for the trapped player.
+
+## Kotlin compiler CI download fix verified (2026-11-09)
+- User reported a second Stage6 failing check. Same source commit had one passing
+  PR run and one failing push run: the failing dependency was Kotlin compiler
+  embeddable2.4.20 redirected from Maven Central to a GitHub browser URL (HTTP504).
+  Verify ALL current checks rather than reporting a single green run as complete.
+- Fix pushed on Stage6 as9c363fe; merged/pushed on Stage7 ascc21406. CI downloads
+  official JetBrains asset587891620, verifies published SHA256, fetches its POM,
+  and routes just that compiler/version through .github/ci-repositories.gradle's
+  exclusive CI-only Maven repo. Kotlin versions/game code remain unchanged.
+- Full local build with official downloaded compiler + init script, --offline
+  --rerun-tasks PASS (1m33s, all21tasks executed); dependencyInsight PASS (9s).
+- ALL new checks SUCCESS, observed after completion:
+  Stage6 push: https://github.com/Raul001R/MonDungeons/actions/runs/42577740084
+  Stage6 PR: https://github.com/Raul001R/MonDungeons/actions/runs/42577746180
+  Stage7 push: https://github.com/Raul001R/MonDungeons/actions/runs/42577757512
+- This final validation entry is a local handoff update after the verified pushes;
+  implementation/workflow fix is already published on both branches. No active
+  build/download processes remain. Stage7 gameplay limitations below still apply.
+
 ## Stage 7 failure recovery (2026-11-09)
 - Read AGENTS.md/memory.md throughout. User requested pushing6 and working on7;
   Stage6 pushed7552804. They then reported failed CI. Actual failure was Gradle

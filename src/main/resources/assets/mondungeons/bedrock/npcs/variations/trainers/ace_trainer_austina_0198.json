@@ -1,0 +1,13 @@
+{
+  "name": "mondungeons:trainers/ace_trainer_austina_0198",
+  "order": 0,
+  "variations": [
+    {
+      "aspects": [],
+      "layers": [],
+      "model": "cobblemon:steve.geo",
+      "poser": "cobblemon:standard",
+      "texture": "rctmod:textures/trainers/single/ace_trainer_austina_0198.png"
+    }
+  ]
+}

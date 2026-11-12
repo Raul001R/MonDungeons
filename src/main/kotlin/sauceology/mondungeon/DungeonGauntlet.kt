@@ -19,6 +19,7 @@ import net.minecraft.server.MinecraftServer
 import net.minecraft.server.level.ServerPlayer
 import org.slf4j.LoggerFactory
 import java.util.UUID
+import net.minecraft.ChatFormatting
 
 data class PreparedDungeon(val plan: DungeonRoundPlan, val teams: List<List<Pokemon>>)
 private data class DungeonBattle(val battle: PokemonBattle, val npc: NPCEntity)
@@ -42,8 +43,9 @@ class DungeonGauntlet(private val server: MinecraftServer, private val onRound: 
         server.execute { victory(event) }
     }
 
-    fun prepare(player: ServerPlayer): PreparedDungeon {
-        val plan = DungeonRounds.load()
+    fun prepare(player: ServerPlayer, tier: String): PreparedDungeon {
+        val base = DungeonSettingsConfig.current.plan(tier, DungeonRounds.load())
+        val plan = DungeonEncounterRoster.load().select(base)
         val required = if (plan.rounds.any { it.format == "doubles" }) 2 else 1
         check(Cobblemon.storage.getParty(player).count { it.currentHealth > 0 } >= required) {
             "Bring at least $required conscious Pokemon"
@@ -71,6 +73,7 @@ class DungeonGauntlet(private val server: MinecraftServer, private val onRound: 
         current.challengeAt = server.tickCount.toLong() + current.prepared.plan.challengeDelayTicks
         onRound(current.player, number)
         player.sendSystemMessage(Component.translatable("message.mondungeons.round_challenge", definition.name))
+        speak(player, definition, definition.dialogue.intro)
     }
 
     private fun challenge(current: GauntletSession, player: ServerPlayer) {
@@ -112,10 +115,18 @@ class DungeonGauntlet(private val server: MinecraftServer, private val onRound: 
         if (event.winners.none { current.player in it.getPlayerUUIDs() } ||
             event.battle.forfeitedBy?.getPlayerUUIDs()?.contains(current.player) == true ||
             event.battle.actors.any { current.player in it.getPlayerUUIDs() && it.responses.any { response -> response is ForfeitActionResponse } }) {
+            if (!current.lost) findPlayer(current.player)?.let { player ->
+                val round = current.prepared.plan.rounds[current.progress.currentRound - 1]
+                speak(player, round, round.dialogue.victory)
+            }
             current.lost = true
             return
         }
         current.pending = current.progress.victory(event.battle.battleId) ?: return
+        findPlayer(current.player)?.let { player ->
+            val round = current.prepared.plan.rounds[requireNotNull(current.pending).finishedRound - 1]
+            speak(player, round, round.dialogue.defeat)
+        }
         current.transitionSince = server.tickCount.toLong()
     }
 
@@ -191,5 +202,13 @@ class DungeonGauntlet(private val server: MinecraftServer, private val onRound: 
 
     private fun discard(npc: NPCEntity) {
         try { DungeonTrainer.discard(npc) } catch (exception: Exception) { logger.error("Could not discard dungeon trainer", exception) }
+    }
+
+    private fun speak(player: ServerPlayer, round: DungeonRound, lines: List<String>) {
+        val text = lines.randomOrNull() ?: return
+        try {
+            player.sendSystemMessage(Component.literal("[${round.name}] ").withStyle(ChatFormatting.LIGHT_PURPLE)
+                .append(Component.literal(text).withStyle(ChatFormatting.GRAY)))
+        } catch (exception: Exception) { logger.warn("Could not show dungeon trainer dialogue", exception) }
     }
 }

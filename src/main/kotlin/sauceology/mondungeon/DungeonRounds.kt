@@ -6,16 +6,23 @@ import net.fabricmc.loader.api.FabricLoader
 import java.nio.file.Files
 
 data class DungeonRound(val name: String, val trainerId: String, val format: String, val level: Int,
-                        val teamSlots: List<Int>, val skill: Int, val boss: JsonObject?, val appearance: String)
+                        val teamSlots: List<Int>, val skill: Int, val boss: JsonObject?, val appearance: String,
+                        val theme: String? = null, val dialogue: DungeonDialogue = DungeonDialogue())
 
 data class DungeonRoundPlan(val rounds: List<DungeonRound>, val healAfterRounds: Set<Int>,
                             val interRoundDelayTicks: Int, val battleEndGraceTicks: Int,
                             val transitionTimeoutTicks: Int, val offsetX: Double, val offsetY: Double, val offsetZ: Double,
-                            val challengeDelayTicks: Int) {
+                            val challengeDelayTicks: Int, val regularIvCap: Int, val regularEvMultiplier: Double) {
     companion object {
         fun parse(root: JsonObject): DungeonRoundPlan {
             val cap = root.get("maxTrainerLevel").asInt
             require(cap in 1..100)
+            val regularIvCap = (root.get("regularIvCap") ?: bundledDefaults.get("regularIvCap")).asBigDecimal.intValueExact()
+            require(regularIvCap in 0..31) { "regularIvCap must be between 0 and 31" }
+            val regularEvMultiplier = (root.get("regularEvMultiplier") ?: bundledDefaults.get("regularEvMultiplier")).asDouble
+            require(regularEvMultiplier.isFinite() && regularEvMultiplier in 0.0..1.0) {
+                "regularEvMultiplier must be between 0 and 1"
+            }
             val appearances = root.getAsJsonObject("trainerAppearances") ?: bundledDefaults.getAsJsonObject("trainerAppearances")
             val fallbackAppearance = root.get("defaultAppearance")?.asString ?: bundledDefaults.get("defaultAppearance").asString
             val bossAppearance = root.get("bossAppearance")?.asString ?: bundledDefaults.get("bossAppearance").asString
@@ -45,7 +52,10 @@ data class DungeonRoundPlan(val rounds: List<DungeonRound>, val healAfterRounds:
                 val appearance = data.get("appearance")?.asString ?: if (boss != null) bossAppearance
                     else appearances.get(trainerId)?.asString ?: fallbackAppearance
                 require(appearance.matches(Regex("[a-z0-9_.-]+:[a-z0-9_./-]+"))) { "Invalid trainer appearance $appearance" }
-                DungeonRound(data.get("name").asString, trainerId, format, level, slots, skill, boss?.deepCopy(), appearance)
+                val theme = data.get("type")?.asString
+                require(theme == null || theme in DungeonEncounterRoster.TYPES) { "Unknown round type $theme" }
+                DungeonRound(data.get("name").asString, trainerId, format, level, slots, skill, boss?.deepCopy(), appearance,
+                    theme, DungeonDialogue.parse(data.getAsJsonObject("dialogue")))
             }
             require(rounds.isNotEmpty())
             require(rounds.zipWithNext().all { (a, b) -> a.level <= b.level }) { "Rounds must progress in level" }
@@ -59,7 +69,7 @@ data class DungeonRoundPlan(val rounds: List<DungeonRound>, val healAfterRounds:
             val offset = root.getAsJsonObject("trainerOffset")
             val x = offset.get("x").asDouble; val y = offset.get("y").asDouble; val z = offset.get("z").asDouble
             require(x.isFinite() && y.isFinite() && z.isFinite())
-            return DungeonRoundPlan(rounds, heals, delay, grace, timeout, x, y, z, challengeDelay)
+            return DungeonRoundPlan(rounds, heals, delay, grace, timeout, x, y, z, challengeDelay, regularIvCap, regularEvMultiplier)
         }
 
         private val bundledDefaults by lazy {

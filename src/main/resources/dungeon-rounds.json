@@ -1,6 +1,8 @@
 {
   "maxTrainerLevel": 50,
-  "healAfterRounds": [2, 4, 6, 8],
+  "regularIvCap": 15,
+  "regularEvMultiplier": 0.5,
+  "healAfterRounds": [2, 4, 6, 8, 9],
   "interRoundDelayTicks": 60,
   "challengeDelayTicks": 40,
   "battleEndGraceTicks": 40,
@@ -20,14 +22,14 @@
     "champion_cynthia_03a5": "mondungeons:trainers/cynthia"
   },
   "rounds": [
-    { "name": "Stone Guard", "trainerId": "leader_brock_019e", "format": "singles", "level": 32, "teamSlots": [0, 2], "skill": 2 },
-    { "name": "Tide Guard", "trainerId": "leader_misty_019f", "format": "singles", "level": 34, "teamSlots": [0, 1, 2], "skill": 2 },
-    { "name": "Thunder Pair", "trainerId": "leader_lt_surge_01a0", "format": "doubles", "level": 36, "teamSlots": [0, 1, 2, 3], "skill": 3 },
-    { "name": "Grove Guard", "trainerId": "leader_erika_01a1", "format": "singles", "level": 38, "teamSlots": [0, 1, 2, 3], "skill": 3 },
-    { "name": "Venom Guard", "trainerId": "leader_koga_01a2", "format": "singles", "level": 40, "teamSlots": [1, 2, 3, 5], "skill": 3 },
-    { "name": "Mind Pair", "trainerId": "leader_sabrina_01a4", "format": "doubles", "level": 42, "teamSlots": [0, 1, 3, 5], "skill": 4 },
-    { "name": "Flame Guard", "trainerId": "leader_blaine_01a3", "format": "singles", "level": 44, "teamSlots": [0, 1, 3, 5], "skill": 4 },
-    { "name": "Dragon Pair", "trainerId": "elite_four_lance_0057", "format": "doubles", "level": 46, "teamSlots": [0, 1, 2, 3], "skill": 4 },
+    { "name": "Stone Guard", "type": "rock", "trainerId": "leader_brock_019e", "format": "singles", "level": 32, "teamSlots": [0, 2], "skill": 2 },
+    { "name": "Tide Guard", "type": "water", "trainerId": "leader_misty_019f", "format": "singles", "level": 34, "teamSlots": [0, 1, 2], "skill": 2 },
+    { "name": "Thunder Pair", "type": "electric", "trainerId": "leader_lt_surge_01a0", "format": "doubles", "level": 36, "teamSlots": [0, 1, 2, 3], "skill": 3 },
+    { "name": "Grove Guard", "type": "grass", "trainerId": "leader_erika_01a1", "format": "singles", "level": 38, "teamSlots": [0, 1, 2, 3], "skill": 3 },
+    { "name": "Venom Guard", "type": "poison", "trainerId": "elite_four_agatha_019c", "appearance": "mondungeons:trainers/koga", "format": "singles", "level": 40, "teamSlots": [0, 1, 2, 3], "skill": 3 },
+    { "name": "Mind Pair", "type": "psychic", "trainerId": "elite_four_lucian_05a6", "appearance": "mondungeons:trainers/sabrina", "format": "doubles", "level": 42, "teamSlots": [0, 1, 2, 3], "skill": 4 },
+    { "name": "Flame Guard", "type": "fire", "trainerId": "leader_blaine_01a3", "format": "singles", "level": 44, "teamSlots": [0, 1, 3, 5], "skill": 4 },
+    { "name": "Dragon Pair", "type": "dragon", "trainerId": "elite_four_lance_0057", "format": "doubles", "level": 46, "teamSlots": [1, 3, 4, 5], "skill": 4 },
     { "name": "Champion Guard", "trainerId": "champion_cynthia_03a5", "format": "singles", "level": 48, "teamSlots": [0, 1, 2, 3, 4, 5], "skill": 5 },
     { "name": "Titan Garchomp", "trainerId": "champion_cynthia_03a5", "format": "singles", "level": 50, "teamSlots": [5], "skill": 5,
       "boss": { "scale": 3.0, "perfectIVs": true, "evs": { "hp": 252, "atk": 252, "spe": 6 }, "heldItem": "cobblemon:leftovers", "moves": ["earthquake", "dragonclaw", "swordsdance", "stoneedge"] }
