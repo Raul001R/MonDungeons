@@ -101,6 +101,7 @@ class DungeonBattleGameTests : FabricGameTest {
         val commands = helper.level.server.commands.dispatcher.root
         val root = requireNotNull(commands.getChild("monDungeons"))
         check(root.getChild("exit") != null && root.getChild("setarena") != null)
+        check(root.getChild("config")?.getChild("set") != null && root.getChild("config")?.getChild("reload") != null)
         check(commands.getChild("mondungeons")?.redirect === root)
         check(commands.getChild("raiddungeon") == null)
         check(commands.getChild("setdungeon") != null)
@@ -131,7 +132,7 @@ class DungeonBattleGameTests : FabricGameTest {
                 check(entries.single { it.id == "jackpot" }.options.any { it.kind == "random_shiny" })
                 entries.forEach { group -> check(group.examples.size == group.options.size) }
                 val payload = RaidOddsPayload(tier.id, "Custom ${tier.id} key", entries,
-                    "bound-start-token", occupied, DungeonRounds.load().rounds.size)
+                    "bound-start-token", occupied, DungeonSettingsConfig.current.plan(tier.id, DungeonRounds.load()).rounds.size)
                 val buffer = net.minecraft.network.RegistryFriendlyByteBuf(io.netty.buffer.Unpooled.buffer(), helper.level.registryAccess())
                 try {
                     RaidOddsPayload.CODEC.encode(buffer, payload)

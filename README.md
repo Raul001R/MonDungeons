@@ -7,8 +7,10 @@ built-in vanilla `minecraft:chests/*` loot tables. Each newly generated chest ha
 a default 10% common-key chance (rare 4.167%, epic 2%, legendary 0.5%; one key
 maximum per chest roll, about 16.667% for any key). Already generated loot is unchanged; datapack-replaced
 chest tables are respected. Using a tiered key opens the MonDungeons odds screen
-without consuming it. Start enters a ten-round trainer gauntlet in the configured
+without consuming it. Start enters a trainer gauntlet in the configured
 arena, one player at a time. The arena remains unconfigured until you set it.
+Common keys have 3 rounds, rare 5, epic 7 and legendary 10. Every run ends with
+a boss included in that count (2/4/6/9 regular trainers, then the boss).
 Clearing all rounds pays one configured prize after a cosmetic spin and consumes
 one key. Unresolved reward IDs must be configured before a live run can start.
 The key uses Minecraft's trial-key texture as a temporary visual.
@@ -37,12 +39,61 @@ compatibility-tested with MonDungeons. No additional mod was installed here.
 
 Build with JDK 25: `./gradlew.bat build`. Development Minecraft launches use JDK 21.
 The dependency/toolchain pins match the working custom-trainers reference project.
-Output: `build/libs/mondungeons-1.0.2.jar`. Install with Fabric API,
+Output: `build/libs/mondungeons-1.1.0.jar`. Install with Fabric API,
 Fabric Language Kotlin and Cobblemon on Minecraft 1.21.1.
 
 Commands use `/monDungeons` (`/mondungeons` is a lowercase alias):
 `/monDungeons exit` returns from your run and `/monDungeons setarena` sets the
 arena as an operator. `/setdungeon` remains the short arena setup command.
+
+Version 1.1.0 settings are grouped in `config/mondungeons/dungeon-settings.json`:
+
+```json
+{
+  "runs": {
+    "roundsByTier": { "common": 3, "rare": 5, "epic": 7, "legendary": 10 }
+  },
+  "trainers": { "regularIvCap": 15, "regularEvMultiplier": 0.5 },
+  "leaderboard": { "pageSize": 8 }
+}
+```
+
+Use these commands in the server console; add `/` in game (operator level 2):
+
+```text
+mondungeons config get
+mondungeons config get runs.roundsByTier.common
+mondungeons config set runs.roundsByTier.common 3
+mondungeons config set trainers.regularIvCap 15
+mondungeons config set trainers.regularEvMultiplier 0.5
+mondungeons config set leaderboard.pageSize 8
+mondungeons config reload
+```
+
+`set` validates, saves and applies the new settings. `reload` loads manual file
+edits. Invalid changes preserve the last working settings and do not overwrite
+the invalid file. Valid file rewrites keep a uniquely named backup; missing settings
+are filled without resetting other values. Changes affect future runs; active
+runs retain their prepared rounds, stats and healing. If a run length changes
+while a key menu is open, Start asks the player to reopen it to see the new length.
+Round counts must be 1 through the number of templates (10 by default); there
+must be exactly one final boss template. Short runs use the first N-1 regular
+round templates followed by that boss, preserving their levels and formats.
+Custom key tiers need their own `runs.roundsByTier.<id>` entry in the file.
+
+On first upgrade, existing `regularIvCap` and `regularEvMultiplier` from
+`dungeon-rounds.json` are copied into the new settings file. The old file is
+preserved; future stat changes belong in `dungeon-settings.json`. Detailed round,
+roster, move, reward, chest and arena files retain their existing roles and loading
+rules; `config reload` reloads only the new settings file.
+
+The key menu's **Leaderboard** button lists players by successful dungeon clears
+across all tiers, with next/previous pages and a Back button. Clears count only
+after reward delivery; failed or abandoned runs add nothing. Totals are saved by
+UUID in the world's `data/mondungeons_leaderboard.dat` and survive restarts. Names
+reflect the most recent credited clear; equal totals sort by name and UUID.
+Payout recovery retries failed credit saves without counting a clear twice.
+Tracking starts with this update; previous versions did not store clear totals.
 
 Change key odds with a datapack overriding
 `data/mondungeons/loot_table/inject/dungeon_key.json`; its `random_chance` condition
@@ -193,22 +244,25 @@ Stage 5 gauntlet:
   `trainerAppearances`, `defaultAppearance`, `bossAppearance` and an optional
   per-round `appearance` are data-configurable; older configs inherit the bundled
   cast. NPCs retain the registered Cobblemon class and existing battle behavior.
-- Default levels rise from 32 to 50. Rounds 3, 6 and 8 are doubles. Each run uses
+- Default template levels rise from 32 to 50. Regular templates 3, 6 and 8 are doubles
+  when included by the key's run length. Each run uses
   varied type specialists, with the actual type shown in the round announcement.
-  Bring at least two conscious Pokemon. A later doubles round also requires two
+  Bring at least two conscious Pokemon for runs containing doubles (one for common).
+  A later doubles round also requires two
   conscious Pokemon; an exhausted party ends the attempt without consuming a key.
-- In `config/mondungeons/dungeon-rounds.json`, `regularIvCap: 15` caps ordinary
-  trainers' inherited IVs without raising lower values; `regularEvMultiplier: 0.5`
+- In `config/mondungeons/dungeon-settings.json`, `trainers.regularIvCap: 15` caps ordinary
+  trainers' inherited IVs without raising lower values; `trainers.regularEvMultiplier: 0.5`
   halves their RCT EV spreads, rounding down (252/252/6 becomes 126/126/3).
   Older configs without these fields use the bundled defaults. Set the cap to 31
   and multiplier to 1.0 to restore inherited RCT stats. Boss IVs/EVs stay configured
   separately and are unaffected by these settings.
-- **Full-party healing follows rounds 2, 4, 6, 8 and 9.** The round-9 heal prepares
-  the party for the boss. Roster `healBeforeBoss: true` also adds this heal to
+- **Full-party healing follows included regular rounds 2, 4, 6 and 8, plus the round
+  immediately before each tier's boss.** Legendary also heals after round 9.
+  Roster `healBeforeBoss: true` adds the pre-boss heal to
   preserved older round configs. Health, status and PP
   carry over through other rounds. No automatic heal occurs on entry. Victory
   transitions wait for battle cleanup before healing or starting the next round.
-- Round 10 selects a **Titan** (including Garchomp, Dragonite, Salamence,
+- Each tier's final round selects a **Titan** (including Garchomp, Dragonite, Salamence,
   Tyranitar, Metagross, Arcanine, Rhyperior, Snorlax or Gyarados): one level-50
   Pokemon at 3x normal scale with perfect IVs, offensive EVs and Leftovers.
   Size is visual; its battle strength
@@ -227,7 +281,7 @@ Stage 5 gauntlet:
   without victory, or a failed next-round launch stop the tracked battle, discard
   its NPC, release the lock and return/queue the player through the existing
   recovery journal.
-- Clearing round 10 rolls one prize on the server from the same table shown in
+- Clearing the final boss rolls one prize on the server from the same table shown in
   the menu, then opens the cosmetic spin. After `spinTicks` (default 100 / five
   seconds), the server delivers the prize, consumes one matching key, returns you
   and releases the lock. Closing the spin cannot reroll or prevent delivery.
@@ -303,8 +357,9 @@ and their dependencies only to development runtime; none are packaged or made
 mandatory in mod metadata. Tests inspect all 39 roster profiles and nine bosses,
 actual form types, legal moves, PP limits, and skin/model dimensions, then
 exercise real singles/doubles battle starts with synthetic victory events
-through all ten transitions and check healing, including before the boss. They do not
-simulate a human playing ten battles. Normal builds run the dependency-free
+through the 3/5/7/10-round runs and check final bosses, pre-boss healing, payouts,
+clear counts, persistence, console settings and recovery after a credit-save failure.
+They do not simulate a human playing the battles. Normal builds run the dependency-free
 admission and round progression checks without installing RCT.
 
 For interactive development play, launch

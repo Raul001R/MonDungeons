@@ -3,7 +3,7 @@
     "id":  "mondungeons",
     "version":  "${version}",
     "name":  "MonDungeons",
-    "description":  "Rare dungeon keys, a ten-round Cobblemon trainer gauntlet, tiered rewards and return recovery.",
+    "description":  "Tiered dungeon keys, boss gauntlets, rewards, a clear leaderboard and return recovery.",
     "authors":  [
                     "Sauceology"
                 ],

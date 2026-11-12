@@ -1,6 +1,79 @@
 # Agent memory
 
+## Push version 1.1.0 (2026-11-11)
+- User explicitly requested pushing the completed 1.1.0 update to Git.
+  Commit the reviewed source, tests, resources, README and handoff on
+  feature/1.1.0-tier-rounds, then push that branch; leave main untouched.
+  git diff --check passed. Prior full build, all 14 integration tests and
+  client preview checks passed as recorded below; no gameplay edits since.
+  Verify GitHub Actions for the pushed commit after publishing the branch.
+
+## Version 1.1.0 tier rounds, console settings and leaderboard (2026-11-11)
+- User approved a boss included in every tier's round count, then requested a GUI
+  leaderboard for most dungeon clears. Implement on feature/1.1.0-tier-rounds;
+  version 1.1.0. New update has not been committed or pushed.
+- Default common/rare/epic/legendary plans: 3/5/7/10 rounds = first 2/4/6/9
+  ordinary templates plus the final boss template. Preserve template levels,
+  formats, giant perfect boss, randomized typed roster and pre-boss heal on each
+  tier. Menu sends the server's tier-specific count; outdated-length offers are
+  rejected before entry. Runs keep their prepared settings after console edits.
+- New grouped config/mondungeons/dungeon-settings.json: runs.roundsByTier,
+  trainers.regularIvCap/regularEvMultiplier, leaderboard.pageSize. Operator-level-2
+  monDungeons config get [path], set <path> <value>, reload work from console;
+  lowercase alias retained. Validate before saving/publishing; atomic replacement,
+  backups, missing-option fill, initial migration of legacy IV/EV settings without
+  rewriting old round files. Detailed resources retain their prior loading rules.
+- Leaderboard button opens paginated server rankings with Back, empty/loading
+  states and occupancy forwarding to the parent menu. Persistent totals by UUID
+  in world/data/mondungeons_leaderboard.dat; descending clears then name/UUID.
+  Counts only paid receipts; return recovery journals retry leaderboard writes
+  before forgetting the run. Replaying the same pending run never credits twice.
+  A credit write failure still returns the player and releases the run lock.
+  Previous versions did not persist historical clear totals.
+- Validation in progress. New dependency-free checks passed: 400 seeded tier
+  plans, final bosses/heals, upgrade, persistence, invalid edits and frozen plans.
+  Initial integration pass: 13/14 passed, one new test incorrectly assumed normal
+  Pokemon scaleModifier == 1. Real dependency bytecode shows initializeScale()
+  runs for unspecified scales; corrected test to check regular IVs instead.
+  Updated suite also covers all four complete runs/payouts/clear counts, console
+  permissions/persistence, ranking/pagination/reload/dedup and injected credit I/O
+  failure recovery. Final full build and GUI visual check pending.
+- FINAL: build -PrctCompat=true --offline SUCCESS (1m31s); all 14 required
+  Minecraft integration tests PASS (23.11s). Complete 3/5/7/10-round runs each
+  reached a level-50 giant perfect-IV boss, healed before it, paid once, consumed
+  one key, restored origin/released lock, and credited one clear (four total).
+  Outdated menu rejection and existing failure/recovery checks passed. Tests use
+  real native battle starts with synthetic victories, not a human balance run.
+  Log: build/1.1.0-validation-final.log. Packaged metadata/default settings/new
+  classes inspected in build/libs/mondungeons-1.1.0.jar, version verified 1.1.0.
+- Client preview without RCT PASS: common menu shows 3 rounds including final
+  boss and Leaderboard beside Start; populated leaderboard with preview-only
+  sample players renders aligned names/totals; Back returns to the key menu.
+  Wide screens inspected: build/1.1.0-key-menu.png and build/1.1.0-leaderboard.png.
+  Compact key menu also inspected: build/1.1.0-key-menu-compact.png. Development
+  client closed normally (session 85307 exit 0), no world opened. Live multiplayer
+  leaderboard screen was not manually exercised; codec/data/payout tests passed.
+  README documents settings, commands, upgrade rules, total-clear tracking and
+  historical-count limitation. Remaining: optional human balance/multiplayer check;
+  no commit/push of 1.1.0 requested yet. Main remains untouched.
+
+## Next update example requested (2026-11-11)
+- User requests common/rare/epic/legendary runs of 3/5/7/10 rounds, a suitable
+  version bump, and settings editable through server-console commands. Explicitly
+  asks for an example first: do not implement until the example is discussed.
+- Proposed feature version 1.1.0, grouped settings with runs.roundsByTier and
+  trainers IV/EV settings; console config get/set/reload commands, persisted
+  changes applying to future runs. Reference gym mod uses grouped JSON and
+  /gym config reload. These dungeon commands do not exist yet.
+- Boss placement for shorter runs needs user clarification. User's new tier-based
+  length requirement supersedes the original same-length rule for every tier.
+
 ## Push version 1.0.2 (2026-11-11)
+- Final CI verified SUCCESS for run 43149107342, exact pushed SHA 85b8035.
+- Pushed commit 85b8035226e025386ce0591b76c14f30608d71b7 to origin/bugfix/1.0.1.
+  Source clean after push. GitHub Actions run 43149107342 matches this exact SHA;
+  last checked in progress at build step, prerequisite steps passed. CI final
+  outcome remains unverified: https://github.com/Raul001R/MonDungeons/actions/runs/43149107342
 - User explicitly requested pushing the local 1.0.2 balance/version changes.
   Reviewed all eight changed files on bugfix/1.0.1; git diff --check passed.
   Prior offline build and all 12 gameplay tests passed as recorded below;

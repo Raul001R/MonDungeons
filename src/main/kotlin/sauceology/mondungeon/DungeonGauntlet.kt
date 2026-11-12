@@ -43,8 +43,9 @@ class DungeonGauntlet(private val server: MinecraftServer, private val onRound: 
         server.execute { victory(event) }
     }
 
-    fun prepare(player: ServerPlayer): PreparedDungeon {
-        val plan = DungeonEncounterRoster.load().select(DungeonRounds.load())
+    fun prepare(player: ServerPlayer, tier: String): PreparedDungeon {
+        val base = DungeonSettingsConfig.current.plan(tier, DungeonRounds.load())
+        val plan = DungeonEncounterRoster.load().select(base)
         val required = if (plan.rounds.any { it.format == "doubles" }) 2 else 1
         check(Cobblemon.storage.getParty(player).count { it.currentHealth > 0 } >= required) {
             "Bring at least $required conscious Pokemon"

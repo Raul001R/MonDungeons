@@ -15,7 +15,10 @@ object DungeonRunService {
         private set
 
     fun register() {
-        ServerLifecycleEvents.SERVER_STARTED.register { server -> runs = DungeonRuns(server) }
+        ServerLifecycleEvents.SERVER_STARTED.register { server ->
+            DungeonSettingsConfig.store.reload()
+            runs = DungeonRuns(server)
+        }
         ServerLifecycleEvents.SERVER_STOPPING.register {
             try { runs?.close() } finally { runs = null }
         }
@@ -34,6 +37,7 @@ object DungeonRunService {
                 if (runs?.setArena(context.source.playerOrException) == true) 1 else 0
             })
             val root = dispatcher.register(literal("monDungeons")
+                .then(DungeonConfigCommands.tree())
                 .then(literal("checkrewards").requires { it.hasPermission(2) }.executes { context ->
                     val problems = DungeonLootData.tables.values.flatMap { table ->
                         DungeonPayout.problems(table).map { "${table.id}: $it" }

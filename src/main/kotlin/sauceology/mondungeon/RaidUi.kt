@@ -13,6 +13,16 @@ object RaidUi {
         PayloadTypeRegistry.playS2C().register(RaidAvailabilityPayload.TYPE, RaidAvailabilityPayload.CODEC)
         PayloadTypeRegistry.playS2C().register(RaidPayoutPayload.TYPE, RaidPayoutPayload.CODEC)
         PayloadTypeRegistry.playC2S().register(RaidStartPayload.TYPE, RaidStartPayload.CODEC)
+        PayloadTypeRegistry.playS2C().register(RaidLeaderboardPayload.TYPE, RaidLeaderboardPayload.CODEC)
+        PayloadTypeRegistry.playC2S().register(RaidLeaderboardRequest.TYPE, RaidLeaderboardRequest.CODEC)
+        ServerPlayNetworking.registerGlobalReceiver(RaidLeaderboardRequest.TYPE) { payload, context ->
+            context.server().execute {
+                val leaderboard = DungeonRunService.runs?.leaderboard ?: return@execute
+                if (ServerPlayNetworking.canSend(context.player(), RaidLeaderboardPayload.TYPE)) {
+                    ServerPlayNetworking.send(context.player(), leaderboard.page(payload.page, DungeonSettingsConfig.current.leaderboardPageSize))
+                }
+            }
+        }
         ServerPlayNetworking.registerGlobalReceiver(RaidStartPayload.TYPE) { payload, context ->
             context.server().execute { DungeonRunService.runs?.start(context.player(), payload.token) }
         }
@@ -31,8 +41,12 @@ object RaidUi {
         // The exact table selected by the held key is also the future payout source.
         val table = DungeonLootData.tables.getValue(tier.lootTableId)
         val entries = RaidRewardMenu.entries(table)
+        val rounds = try { DungeonSettingsConfig.current.plan(tier.id, DungeonRounds.load()).rounds.size }
+        catch (exception: Exception) {
+            player.sendSystemMessage(Component.translatable("message.mondungeons.trainers_unavailable"))
+            return
+        }
         val token = DungeonRunService.runs?.offer(player, hand, stack) ?: return
-        val rounds = runCatching { DungeonRounds.load().rounds.size }.getOrDefault(0)
         ServerPlayNetworking.send(player, RaidOddsPayload(tier.id, stack.hoverName.string, entries, token,
             DungeonRunService.runs?.active != null, rounds))
     }

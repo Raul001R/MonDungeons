@@ -6,6 +6,82 @@ import net.minecraft.gametest.framework.GameTest
 import net.minecraft.gametest.framework.GameTestHelper
 
 class DungeonRosterGameTests : FabricGameTest {
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
+    fun leaderboardPersistsRanksPagesAndNeverDuplicatesCredit(helper: GameTestHelper) {
+        val directory = java.nio.file.Files.createTempDirectory(helper.level.server.getWorldPath(
+            net.minecraft.world.level.storage.LevelResource.ROOT), "leaderboard-checks-")
+        val file = directory.resolve("clears.dat")
+        var failWrites = false
+        val leaderboard = DungeonLeaderboard(file) { path, tag ->
+            if (failWrites) throw java.io.IOException("Injected leaderboard write failure")
+            DungeonDurableFiles.write(path, tag)
+        }
+        check(leaderboard.page(0, 8).entries.isEmpty())
+        val alice = java.util.UUID.randomUUID()
+        val bob = java.util.UUID.randomUUID()
+        val firstRun = java.util.UUID.randomUUID()
+        leaderboard.record(alice, "Alice", firstRun)
+        leaderboard.record(alice, "Alice", firstRun)
+        check(leaderboard.page(0, 8).entries.single().clears == 1L)
+        leaderboard.record(bob, "Bob", java.util.UUID.randomUUID())
+        check(leaderboard.page(0, 8).entries.map { it.name } == listOf("Alice", "Bob"))
+        leaderboard.record(bob, "NewBob", java.util.UUID.randomUUID())
+        check(leaderboard.page(0, 8).entries.first() == RaidLeaderboardEntry("NewBob", 2))
+        val reloaded = DungeonLeaderboard(file)
+        check(reloaded.page(0, 8) == leaderboard.page(0, 8))
+        reloaded.record(alice, "Alice", firstRun)
+        check(reloaded.page(0, 8) == leaderboard.page(0, 8))
+        failWrites = true
+        check(runCatching { leaderboard.record(alice, "Alice", java.util.UUID.randomUUID()) }.isFailure)
+        check(DungeonLeaderboard(file).page(0, 8) == leaderboard.page(0, 8))
+        failWrites = false
+        repeat(11) { leaderboard.record(java.util.UUID.randomUUID(), "Player$it", java.util.UUID.randomUUID()) }
+        val first = leaderboard.page(-20, 8)
+        val last = leaderboard.page(Int.MAX_VALUE, 8)
+        check(first.page == 0 && first.totalPlayers == 13 && first.entries.size == 8)
+        check(last.page == 1 && last.entries.size == 5)
+        check(first.entries.first().name == "NewBob")
+        check((first.entries + last.entries).map { it.name }.distinct().size == 13)
+        val buffer = net.minecraft.network.RegistryFriendlyByteBuf(io.netty.buffer.Unpooled.buffer(), helper.level.registryAccess())
+        try {
+            RaidLeaderboardPayload.CODEC.encode(buffer, last)
+            check(RaidLeaderboardPayload.CODEC.decode(buffer) == last)
+            val request = RaidLeaderboardRequest(Int.MAX_VALUE)
+            RaidLeaderboardRequest.CODEC.encode(buffer, request)
+            check(RaidLeaderboardRequest.CODEC.decode(buffer) == request)
+        } finally { buffer.release() }
+        helper.succeed()
+    }
+
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
+    fun consoleSettingsPersistValidateAndRequireOperator(helper: GameTestHelper) {
+        val file = net.fabricmc.loader.api.FabricLoader.getInstance().configDir.resolve("mondungeons/dungeon-settings.json")
+        val original = java.nio.file.Files.readString(file)
+        val store = DungeonSettingsConfig.store
+        val dispatcher = helper.level.server.commands.dispatcher
+        val source = helper.level.server.createCommandSourceStack().withSuppressedOutput()
+        try {
+            val frozen = store.current.plan("common", DungeonRounds.load())
+            check(dispatcher.execute("mondungeons config get runs.roundsByTier.common", source) == 1)
+            check(dispatcher.execute("mondungeons config set runs.roundsByTier.common 4", source) == 1)
+            check(store.current.plan("common", DungeonRounds.load()).rounds.size == 4 && frozen.rounds.size == 3)
+            val persisted = java.nio.file.Files.readString(file)
+            check(JsonParser.parseString(persisted).asJsonObject.getAsJsonObject("runs").getAsJsonObject("roundsByTier").get("common").asInt == 4)
+            check(dispatcher.execute("monDungeons config set runs.roundsByTier.common 11", source) == 0)
+            check(java.nio.file.Files.readString(file) == persisted && store.current.roundsByTier.getValue("common") == 4)
+            check(dispatcher.execute("mondungeons config set trainers.regularEvMultiplier 0.25", source) == 1)
+            check(store.current.regularEvMultiplier == 0.25)
+            check(runCatching { dispatcher.execute("mondungeons config set trainers.regularIvCap 1", source.withPermission(0)) }.isFailure)
+            java.nio.file.Files.writeString(file, original)
+            check(dispatcher.execute("mondungeons config reload", source) == 1)
+            check(store.current.roundsByTier.getValue("common") == 3)
+        } finally {
+            java.nio.file.Files.writeString(file, original)
+            store.reload()
+        }
+        helper.succeed()
+    }
+
     @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 400)
     fun increasedChestOddsAndExistingChestInsertion(helper: GameTestHelper) {
         val params = net.minecraft.world.level.storage.loot.LootParams.Builder(helper.level)

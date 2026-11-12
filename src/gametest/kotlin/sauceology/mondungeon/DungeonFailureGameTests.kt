@@ -35,6 +35,9 @@ class DungeonFailureGameTests : FabricGameTest {
         return DungeonReturnRecovery(dir.resolve("returns.dat"), helper.level.registryAccess())
     }
 
+    private fun leaderboard(helper: GameTestHelper): DungeonLeaderboard = DungeonLeaderboard(
+        Files.createTempDirectory(helper.level.server.getWorldPath(LevelResource.ROOT), "dungeon-leaderboard-test-").resolve("clears.dat"))
+
     private val gems get() = DungeonRewardTable(MonDungeons.id("test/gems"), listOf(DungeonReward(
         JsonParser.parseString("""{"type":"item","item":"minecraft:diamond","count":4,"label":"Diamonds"}""").asJsonObject,
         1.0, "rare")), emptyList())
@@ -86,7 +89,13 @@ class DungeonFailureGameTests : FabricGameTest {
         player.inventory.setItem(0, key(2))
         legacy.remember(player.uuid, origin, key())
         player.setPos(-35.5, 80.0, 27.25)
-        val restarted = DungeonRuns(helper.level.server, DungeonReturnRecovery(file, helper.level.registryAccess()), { gems }, headless)
+        var failCredit = false
+        val rankingFile = dir.resolve("leaderboard.dat")
+        val rankings = DungeonLeaderboard(rankingFile) { path, tag ->
+            if (failCredit) throw IOException("Injected leaderboard credit failure")
+            DungeonDurableFiles.write(path, tag)
+        }
+        val restarted = DungeonRuns(helper.level.server, DungeonReturnRecovery(file, helper.level.registryAccess()), { gems }, headless, rankings)
         try {
             check(restarted.active == null) // A crash never restores a stale global lock.
             restarted.rejoin(player)
@@ -106,9 +115,16 @@ class DungeonFailureGameTests : FabricGameTest {
             restarted.recovery.remember(player.uuid, origin, key(), committedRun)
             restarted.recovery.preparePayout(player.uuid, committed.uuid)
             check(DungeonPayoutCommit.grant(player, key(), RolledDungeonReward("rare", "Eevee", null, committed), committedRun))
+            failCredit = true
+            restarted.rejoin(player)
+            check(DungeonPosition.capture(player) == origin) { "Leaderboard errors must not prevent return" }
+            check(player.uuid in restarted.recovery.pending() && rankings.page(0, 8).entries.isEmpty())
+            failCredit = false
             restarted.rejoin(player)
             check(Cobblemon.storage.getParty(player).get(committed.uuid) != null)
             check(player.inventory.getItem(0).count == 1 && restarted.recovery.pending().isEmpty())
+            check(rankings.page(0, 8).entries.single().clears == 1L)
+            check(DungeonLeaderboard(rankingFile).page(0, 8).entries.single().clears == 1L)
         } finally { restarted.close(); player.discard() }
         helper.succeed()
     }
@@ -176,7 +192,7 @@ class DungeonFailureGameTests : FabricGameTest {
     @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 1000)
     fun losingAndUnreportedBattleEndReleaseActualRunLock(helper: GameTestHelper) {
         val player = helper.makeMockServerPlayerInLevel()
-        val runs = DungeonRuns(helper.level.server, journal(helper), { gems }, headless)
+        val runs = DungeonRuns(helper.level.server, journal(helper), { gems }, headless, leaderboard(helper))
         val pos = helper.absolutePos(BlockPos(1, 2, 1))
         player.setPos(pos.x + 80.5, pos.y.toDouble(), pos.z + 80.5)
         check(runs.setArena(player))
@@ -193,6 +209,7 @@ class DungeonFailureGameTests : FabricGameTest {
             check(runs.active == null && runs.recovery.pending().isEmpty())
             check(DungeonPosition.capture(player) == origin)
             check(player.inventory.getItem(0).count == 2)
+            check(runs.leaderboard.page(0, 8).totalPlayers == 0) { "Failed runs must not count as clears" }
         }
         fun cleanup() { runs.close(); player.discard() }
         var phase = 0
@@ -241,59 +258,93 @@ class DungeonFailureGameTests : FabricGameTest {
         }
         step()
     }
-    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 1600)
-    fun tenRoundsSpinAndAtomicPayoutCompleteThroughRunCoordinator(helper: GameTestHelper) {
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 4000)
+    fun everyTierEndsWithBossPaysOnceAndCountsOneClear(helper: GameTestHelper) {
         val player = helper.makeMockServerPlayerInLevel()
         val payloads = mutableListOf<RaidPayoutPayload>()
         val display = object : DungeonPresentation {
             override fun available(player: ServerPlayer) = true
             override fun show(player: ServerPlayer, payload: RaidPayoutPayload) { payloads += payload }
         }
-        val runs = DungeonRuns(helper.level.server, journal(helper), { gems }, display)
+        val rankings = leaderboard(helper)
+        val runs = DungeonRuns(helper.level.server, journal(helper), { gems }, display, rankings)
+        val tiers = listOf("common" to 3, "rare" to 5, "epic" to 7, "legendary" to 10)
+        var tierIndex = 0
         val pos = helper.absolutePos(BlockPos(1, 2, 1))
         player.setPos(pos.x - 120.5, pos.y.toDouble(), pos.z - 120.5)
         check(runs.setArena(player))
         player.setPos(pos.x + 0.25, pos.y + 0.25, pos.z + 0.75)
         val origin = DungeonPosition.capture(player)
-        player.inventory.setItem(0, key(2))
         repeat(6) { Cobblemon.storage.getParty(player).set(it, PokemonProperties.parse("garchomp level=50").create()) }
         val won = mutableSetOf<UUID>()
         fun cleanup() { runs.close(); player.discard() }
-        try {
+        fun start() {
+            payloads.clear(); won.clear(); player.inventory.clearContent()
+            val stack = key(2).apply {
+                set(DataComponents.CUSTOM_DATA, CustomData.of(CompoundTag().apply { putString("dungeon_key_tier", tiers[tierIndex].first) }))
+            }
+            player.inventory.setItem(0, stack)
+            if (tierIndex == 0) {
+                val stale = runs.offer(player, net.minecraft.world.InteractionHand.MAIN_HAND, stack)
+                try {
+                    DungeonSettingsConfig.store.set("runs.roundsByTier.common", "4")
+                    runs.start(player, stale)
+                    check(runs.active == null && runs.recovery.pending().isEmpty()) { "An outdated menu must not enter a different-length run" }
+                    check(player.mainHandItem.count == 2 && DungeonPosition.capture(player) == origin)
+                } finally { DungeonSettingsConfig.store.set("runs.roundsByTier.common", "3") }
+            }
             runs.start(player, runs.offer(player, net.minecraft.world.InteractionHand.MAIN_HAND, player.mainHandItem))
             check(runs.active != null)
-        } catch (error: Throwable) { cleanup(); throw error }
+        }
+        try { start() } catch (error: Throwable) { cleanup(); throw error }
         fun step() {
             helper.runAfterDelay(1) {
                 try {
                     runs.tick()
                     val battle = BattleRegistry.getBattleByParticipatingPlayer(player)
+                    val expectedRounds = tiers[tierIndex].second
                     if (battle != null && won.add(battle.battleId)) {
-                        if (won.size == 10) check(Cobblemon.storage.getParty(player).all { it.currentHealth == it.maxHealth }) {
-                            "Party must heal after round nine before the boss, including preserved older configs"
+                        if (won.size == expectedRounds) check(Cobblemon.storage.getParty(player).all { it.currentHealth == it.maxHealth }) {
+                            "Every tier must heal immediately before its final boss"
                         }
                         val challenger = battle.actors.single { player.uuid in it.getPlayerUUIDs() }
                         val trainer = battle.actors.single { player.uuid !in it.getPlayerUUIDs() }
+                        if (won.size == expectedRounds) {
+                            check(trainer.pokemonList.size == 1)
+                            val boss = trainer.pokemonList.single().effectedPokemon
+                            check(boss.level == 50 && boss.scaleModifier == 3f && boss.ivs[com.cobblemon.mod.common.api.pokemon.stats.Stats.HP] == 31)
+                        } else check(trainer.pokemonList.all {
+                            requireNotNull(it.effectedPokemon.ivs[com.cobblemon.mod.common.api.pokemon.stats.Stats.HP]) <= 15
+                        }) { "Regular rounds must use regular-trainer stats" }
                         val victory = BattleVictoryEvent(battle, listOf(challenger), listOf(trainer), false)
                         CobblemonEvents.BATTLE_VICTORY.post(victory)
                         CobblemonEvents.BATTLE_VICTORY.post(victory)
                         battle.stop()
-                        if (won.size == 9) Cobblemon.storage.getParty(player).forEach { it.currentHealth = 1 }
+                        if (won.size == expectedRounds - 1) Cobblemon.storage.getParty(player).forEach { it.currentHealth = 1 }
                     }
                     if (payloads.lastOrNull()?.state == "granted") {
-                        check(won.size == 10)
+                        check(won.size == expectedRounds)
                         check(payloads.map { it.state } == listOf("spinning", "granted"))
                         check(runs.active == null && runs.recovery.pending().isEmpty())
                         check(DungeonPosition.capture(player) == origin)
                         check(player.inventory.getItem(0).count == 1)
                         check((0 until 36).sumOf { if (player.inventory.getItem(it).`is`(Items.DIAMOND)) player.inventory.getItem(it).count else 0 } == 4)
-                        cleanup(); helper.succeed()
+                        val total = rankings.page(0, 8).entries.single().clears
+                        check(total == (tierIndex + 1).toLong())
+                        runs.rejoin(player)
+                        check(rankings.page(0, 8).entries.single().clears == total)
+                        tierIndex++
+                        if (tierIndex == tiers.size) { cleanup(); helper.succeed() }
+                        else { start(); step() }
                     } else {
                         check(runs.active != null)
                         check(player.inventory.getItem(0).count == 2)
                         step()
                     }
-                } catch (error: Throwable) { cleanup(); throw error }
+                } catch (error: Throwable) {
+                    org.slf4j.LoggerFactory.getLogger("mondungeons/tier-tests").error("Tier ${tiers[tierIndex].first}, won ${won.size} battles", error)
+                    cleanup(); throw error
+                }
             }
         }
         step()

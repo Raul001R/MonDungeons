@@ -62,6 +62,7 @@ fun main() {
     val rosterJson = requireNotNull(DungeonEncounterRoster::class.java.getResourceAsStream("/dungeon-trainers.json"))
         .bufferedReader().use { JsonParser.parseReader(it).asJsonObject }
     val roster = DungeonEncounterRoster.parse(rosterJson)
+    checkDungeonSettings(plan, roster)
     val selections = (0..99).map { roster.select(plan, kotlin.random.Random(it)) }
     selections.forEach { selected ->
         check(selected.rounds.size == plan.rounds.size && selected.healAfterRounds == plan.healAfterRounds + 9)

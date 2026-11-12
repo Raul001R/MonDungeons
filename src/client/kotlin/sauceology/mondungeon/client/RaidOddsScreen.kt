@@ -49,7 +49,8 @@ class RaidOddsScreen(private val odds: RaidOddsPayload, private val preview: Boo
 
     override fun init() {
         addRenderableWidget(MenuButton(right - 32, top + 10, 20, 18, Component.literal("X")) { onClose() })
-        start = addRenderableWidget(MenuButton(left + 12, buttonY, panelWidth - 24, buttonHeight,
+        val leaderboardWidth = ((panelWidth - 30) / 2).coerceAtMost(118)
+        start = addRenderableWidget(MenuButton(left + 12, buttonY, panelWidth - 30 - leaderboardWidth, buttonHeight,
             Component.translatable("screen.mondungeons.start"), primary = true) { button ->
             if (!preview && !occupied) {
                 button.active = false
@@ -57,6 +58,10 @@ class RaidOddsScreen(private val odds: RaidOddsPayload, private val preview: Boo
                 onClose()
             }
         })
+        addRenderableWidget(MenuButton(right - 12 - leaderboardWidth, buttonY, leaderboardWidth, buttonHeight,
+            Component.translatable("screen.mondungeons.leaderboard")) {
+            minecraft?.setScreen(RaidLeaderboardScreen(this, preview))
+        }).active = preview || ClientPlayNetworking.canSend(sauceology.mondungeon.RaidLeaderboardRequest.TYPE)
         updateStart()
         rows.forEachIndexed { index, group ->
             addRenderableWidget(MenuButton(left + 12, rowTop + index * (rowHeight + gap), panelWidth - 24,
@@ -214,7 +219,7 @@ class RaidOddsScreen(private val odds: RaidOddsPayload, private val preview: Boo
         }
     }
 
-    private class MenuButton(x: Int, y: Int, width: Int, height: Int, label: Component,
+    internal class MenuButton(x: Int, y: Int, width: Int, height: Int, label: Component,
                              private val primary: Boolean = false, private val quiet: Boolean = false, action: (Button) -> Unit) :
         Button(x, y, width, height, label, OnPress { action(it) }, CreateNarration { it.get() }) {
         override fun renderWidget(graphics: GuiGraphics, mouseX: Int, mouseY: Int, partialTick: Float) {
