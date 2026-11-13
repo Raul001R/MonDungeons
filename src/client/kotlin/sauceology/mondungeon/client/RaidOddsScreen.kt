@@ -52,7 +52,7 @@ class RaidOddsScreen(private val odds: RaidOddsPayload, private val preview: Boo
         val leaderboardWidth = ((panelWidth - 30) / 2).coerceAtMost(118)
         start = addRenderableWidget(MenuButton(left + 12, buttonY, panelWidth - 30 - leaderboardWidth, buttonHeight,
             Component.translatable("screen.mondungeons.start"), primary = true) { button ->
-            if (!preview && !occupied) {
+            if (!preview) {
                 button.active = false
                 ClientPlayNetworking.send(RaidStartPayload(odds.startToken))
                 onClose()
@@ -77,8 +77,8 @@ class RaidOddsScreen(private val odds: RaidOddsPayload, private val preview: Boo
     }
 
     private fun updateStart() {
-        start.message = Component.translatable(if (occupied) "screen.mondungeons.in_use" else "screen.mondungeons.start")
-        start.active = !occupied && (preview || (minecraft?.connection != null && ClientPlayNetworking.canSend(RaidStartPayload.TYPE)))
+        start.message = Component.translatable(if (occupied) "screen.mondungeons.join_queue" else "screen.mondungeons.start")
+        start.active = preview || (minecraft?.connection != null && ClientPlayNetworking.canSend(RaidStartPayload.TYPE))
     }
 
     override fun isPauseScreen() = false

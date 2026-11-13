@@ -3,7 +3,7 @@
     "id":  "mondungeons",
     "version":  "${version}",
     "name":  "MonDungeons",
-    "description":  "Tiered dungeon keys, boss gauntlets, rewards, a clear leaderboard and return recovery.",
+    "description":  "Tiered dungeon keys, multiple dungeon arenas, a player queue, weighted Pokemon prizes, boss gauntlets and return recovery.",
     "authors":  [
                     "Sauceology"
                 ],

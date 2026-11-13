@@ -8,8 +8,12 @@
     "Pokemon rewards use Cobblemon's spec/bucket system: `type` is `pokemon` and `spec` is a Pokemon properties string. Tune the specs to what you want to hand out.",
     "Item prizes accept exactly one of item (single id), items (list of ids; uniformly choose one), or itemTag (tag id without #; uniformly choose one registered member). count is the stack size for the selected item. The prize's weight and group odds stay unchanged.",
     "Mega Stone and Z-Crystal prizes use Mega Showdown official item tags. Supplied addon IDs require their provider mods and runtime verification. An unavailable positive-chance prize blocks Start instead of being silently removed.",
+    "randomPokemonSelectionByGroup controls random Pokemon species selection by reward group: spawn_rarity uses loaded Cobblemon world bucket odds, then equal odds per species inside the chosen bucket; uniform uses equal odds across all implemented species. Individual Pokemon entries may override this with speciesSelection.",
+    "Spawn rarity uses each species' most common loaded bucket, without multiplying odds for duplicate biome/form entries. Species without a matching spawn use the rarest enabled world bucket. Empty buckets are omitted and remaining weights normalized. Biome/time conditions and per-spawn weights are not used for prize selection.",
     "All numbers are drafts for balancing."
   ],
+
+  "randomPokemonSelectionByGroup": { "common": "spawn_rarity" },
 
   "keyTiers": {
     "common":    { "chestWeight": 60, "lootTableId": "mondungeons:rewards/common", "tierOdds": { "jackpot": 1,  "rare": 9,  "uncommon": 30, "common": 60 } },

@@ -10,6 +10,10 @@ object MonDungeonsClient : ClientModInitializer {
 	override fun onInitializeClient() {
 		DungeonNpcTextures.register()
 		RaidOddsPreview.register()
+        ClientPlayNetworking.registerGlobalReceiver(sauceology.mondungeon.RaidQueuePromptPayload.TYPE) { payload, context ->
+            if (payload.seconds > 0) context.client().setScreen(RaidQueueScreen(payload))
+            else (context.client().screen as? RaidQueueScreen)?.dismiss(payload.token)
+        }
         ClientPlayNetworking.registerGlobalReceiver(sauceology.mondungeon.RaidLeaderboardPayload.TYPE) { payload, context ->
             (context.client().screen as? RaidLeaderboardScreen)?.accept(payload)
         }

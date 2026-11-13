@@ -11,7 +11,7 @@ import java.nio.file.StandardCopyOption
 
 /** Copied into a prepared run; replacing the live settings cannot change an active battle. */
 data class DungeonSettings(val roundsByTier: Map<String, Int>, val regularIvCap: Int, val regularEvMultiplier: Double,
-    val leaderboardPageSize: Int) {
+    val leaderboardPageSize: Int, val queueConfirmationSeconds: Int) {
     fun plan(tier: String, base: DungeonRoundPlan): DungeonRoundPlan {
         val count = requireNotNull(roundsByTier[tier]) { "Missing config option: runs.roundsByTier.$tier" }
         require(count in 1..base.rounds.size) { "runs.roundsByTier.$tier must be between 1 and ${base.rounds.size}" }
@@ -33,10 +33,11 @@ data class DungeonSettings(val roundsByTier: Map<String, Int>, val regularIvCap:
             }
             fun integer(path: String): Int = try { number(path).asBigDecimal.intValueExact() }
                 catch (exception: Exception) { throw IllegalArgumentException("$path must be a whole number", exception) }
-            require(root.keySet().all { it in setOf("runs", "trainers", "leaderboard") }) { "Unknown settings section" }
+            require(root.keySet().all { it in setOf("runs", "trainers", "leaderboard", "queue") }) { "Unknown settings section" }
             require(root.getAsJsonObject("runs").keySet() == setOf("roundsByTier")) { "Unknown option in runs" }
             require(root.getAsJsonObject("trainers").keySet() == setOf("regularIvCap", "regularEvMultiplier")) { "Unknown option in trainers" }
             require(root.getAsJsonObject("leaderboard").keySet() == setOf("pageSize")) { "Unknown option in leaderboard" }
+            require(root.getAsJsonObject("queue").keySet() == setOf("confirmationSeconds")) { "Unknown option in queue" }
             val counts = root.getAsJsonObject("runs").getAsJsonObject("roundsByTier").keySet().associateWith { tier ->
                 require(tier.matches(Regex("[a-z0-9_]+"))) { "Invalid tier in runs.roundsByTier: $tier" }
                 integer("runs.roundsByTier.$tier").also { require(it > 0) { "runs.roundsByTier.$tier must be positive" } }
@@ -48,7 +49,9 @@ data class DungeonSettings(val roundsByTier: Map<String, Int>, val regularIvCap:
             require(evs.isFinite() && evs in 0.0..1.0) { "trainers.regularEvMultiplier must be between 0 and 1" }
             val pageSize = integer("leaderboard.pageSize")
             require(pageSize in 1..10) { "leaderboard.pageSize must be between 1 and 10" }
-            return DungeonSettings(counts, ivs, evs, pageSize)
+            val confirmationSeconds = integer("queue.confirmationSeconds")
+            require(confirmationSeconds > 0 && confirmationSeconds <= Int.MAX_VALUE / 20) { "queue.confirmationSeconds must be positive and fit in ticks" }
+            return DungeonSettings(counts, ivs, evs, pageSize, confirmationSeconds)
         }
 
         fun value(root: JsonObject, path: String): JsonElement {
@@ -75,7 +78,7 @@ class DungeonSettingsStore(private val file: Path, private val legacyRounds: Pat
     fun get(path: String?): String = gson.toJson(if (path == null) document else DungeonSettings.value(document, path))
 
     fun paths(): List<String> = current.roundsByTier.keys.map { "runs.roundsByTier.$it" } +
-        listOf("trainers.regularIvCap", "trainers.regularEvMultiplier", "leaderboard.pageSize")
+        listOf("trainers.regularIvCap", "trainers.regularEvMultiplier", "leaderboard.pageSize", "queue.confirmationSeconds")
 
     fun set(path: String, text: String): DungeonSettings {
         require(path in paths()) { "Unknown editable config option: $path" }

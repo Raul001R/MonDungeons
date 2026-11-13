@@ -1,6 +1,122 @@
 # Agent memory
 
+## Publish version 1.2.1 (2026-11-13)
+- User explicitly requested updating the version number and pushing to Git.
+  Bump1.2.0 to1.2.1, update current README/artifact references, build and verify
+  packaged metadata. Commit all completed multiple-arena/queue, weighted common
+  Pokemon and lower-key-rate changes on feature/1.2.0-multi-arenas, then push
+  that branch and verify GitHub CI for the exact pushed commit. Main untouched.
+- Latest gameplay code passed all18 native Minecraft integration tests and the
+  full -PrctCompat=true offline build as recorded below. This turn changes only
+  version/docs; no repeat of native gameplay tests needed unless code changes.
+  build --offline SUCCESS (19s), dependency-free checks passed, packaged mod id
+  mondungeons/version1.2.1 and chest schema2/common5% verified. Final diff review
+  and git diff --check passed. Artifact build/libs/mondungeons-1.2.1.jar;
+  log build/1.2.1-release-validation.log. Ready to commit/push all31 reviewed
+  source/resource/test/doc files; no build artifacts or development run data.
+
+## Halved world-chest key rates (2026-11-13)
+- User requested fewer chest keys and asked whether already-present keys change.
+  Explicitly chose halving all default rates: common5%, rare2.083333%, epic1%,
+  legendary0.25%; any key8.333333%, at most one injected key per eligible roll.
+  Keep version1.2.0 and current feature/1.2.0-multi-arenas work; no push requested.
+- Bundled dungeon-chests.json now schemaVersion2/commonKeyChance0.05. Loader
+  backs up and atomically migrates older configs at the former0.10 default to
+  the bundled0.05 default. Other customized older chances are preserved and
+  marked upgraded; explicit schema2 rates are never automatically changed.
+- Existing chest/player key stacks are not removed, rerolled or modified. New
+  rates affect loot-table rolls, including old unrolled loot-table chests when
+  first generated. Already-rolled chest inventories are unchanged. Restart
+  after installing the updated jar; manual /loot insertion remains guaranteed.
+- Extended existing actual5000-chest-roll integration test to target5%; checks
+  backup, one-time migration, custom preservation/new overrides and pre-existing
+  chest key preservation. README updated. FINAL build -PrctCompat=true --offline
+  SUCCESS (2m56s); all18 required Minecraft tests PASS (39.30s), including actual
+  chest odds/migration/preservation. Log build/1.2.0-lower-key-rates.log. Packaged
+  schemaVersion2/commonKeyChance0.05 and version1.2.0 verified. Updated artifact:
+  build/libs/mondungeons-1.2.0.jar. All changes local/uncommitted/unpushed.
+
+## Version 1.2.0 multiple areas and FIFO queue (2026-11-12, complete locally)
+- User put the common-pool Pokemon rarity change in version 1.2.0, requested
+  multiple dungeon areas with concurrent runs, FIFO waiting when full, and a
+  prompt asking the next player whether they still want to play. Also requested
+  showing the entire loot pool when finished. This supersedes the original
+  single-arena/global-lock requirement. Work on feature/1.2.0-multi-arenas;
+  version bumped to 1.2.0. No commit or push requested.
+- Added named arenas with /setdungeon <id> and /monDungeons setarena <id>;
+  no-arg command retains default. /monDungeons arenas list and remove <id>
+  support administration (including console list/removal). Old arena config
+  loads as default; edits migrate to arenas map without losing coordinates,
+  orientation or timer settings. Occupied/reserved areas cannot change; duplicate
+  entry positions are rejected. Owners choose/build separate physical arenas.
+- DungeonRuns now owns a separate admission and gauntlet per arena. Battle IDs,
+  payouts, keys, origin journals and leaderboard receipts stay player-specific.
+  Active runs independently tick and release only their own arena on all exits.
+- Full menu offers JOIN QUEUE. FIFO queue reserves free arenas with player-bound,
+  single-use prompt tokens; successive waiters can be invited to multiple slots.
+  No auto-teleport. Yes revalidates key (any inventory slot), player/party/settings,
+  reward table/arena and captures origin only then. No/Escape/timeout/disconnect/
+  death/invalid acceptance releases reservation. No key consumed before payout.
+  /monDungeons queue status and leave (or exit) are available. Queue is in-memory
+  and cleared at shutdown/restart; durable return/payout recovery remains intact.
+- queue.confirmationSeconds default30 added to grouped settings and console
+  get/set/reload; new invitations use current value, existing deadlines stay fixed.
+  New RaidQueueScreen Yes/No/countdown UI; -PraidUiPreview=queue for visual check.
+- Existing15 Minecraft tests passed after refactor; discovered processGametestResources
+  was cached despite a changed entrypoint list. Added entrypoint-list task input.
+  First full18 run passed all new queue tests but exhausted the 2GB test-server
+  heap during an existing legendary-run test (native GraalVM battle engine and
+  RCT mock-player synchronization). Increased development GameTest heap to4GB.
+- FINAL: build -PrctCompat=true --offline SUCCESS (2m11s); all18 required Minecraft
+  tests PASS (31.66s), including simultaneous 3-round clears/payouts and queue
+  reservation/timeout/decline/disconnect/shutdown tests. Dependency-free FIFO,
+  admission, upgrade/settings, 400 tier-plan and 100 seeded-roster checks PASS.
+  Log build/1.2.0-validation-final.log. Packaged metadata verified1.2.0, named-arena
+  defaults, queue30s, common spawn_rarity and queue client/server classes present.
+- GUI preview without RCT PASS at854x480: readable Yes/No prompt, common key,
+  3 rounds including boss and30-second reservation. Actual Minecraft screenshot
+  build/1.2.0-queue-prompt.png. Development client closed normally (session3363,
+  exit0), no world opened. Live human multiplayer not manually exercised; tests
+  use real native battle starts with synthetic victories. No further code work
+  pending; changes remain uncommitted and unpushed.
+- Generated build/loot-pool-1.2.0.md from current bundled JSON, all22 reward
+  entries with amounts, weights, per-key odds and exact definitions. Final reply
+  must show the complete pool and link updated1.2.0 jar. Existing server configs
+  preserve owner rewards. Labels XP Candy S/M and Shiny / pseudo mon actually mean
+  medium candy only and uniform random shiny (no pseudo-legendary restriction).
+
+## Common-pool Pokemon spawn rarity (2026-11-12)
+- User requested species weighting for the common loot pool and explicitly chose
+  Cobblemon spawn rarity. Implementing on feature/common-pokemon-rarity; no push
+  or release/version change requested. Jackpot shiny selection stays uniform.
+- Added randomPokemonSelectionByGroup default common=spawn_rarity in bundled
+  dungeon-loot.json. Older configs inherit the bundled selection map without
+  rewriting owner loot data; explicit map/entry speciesSelection overrides work.
+- Reads actual Cobblemon BestSpawner.config.worldBuckets and loaded world spawn
+  details each selection, including datapack reloads. One species membership at
+  its highest-weight bucket avoids duplicate biome/form boosts. Select occupied
+  bucket by weight, then uniformly among its species. Species without qualifying
+  world spawn entries remain eligible in the rarest enabled bucket. Local spawn
+  conditions/individual spawn-entry weights do not affect prize odds. Reward
+  group/entry probabilities, consumption and payout sequencing are preserved.
+- Added runtime regression coverage for bucket odds, duplicate entries, fallback,
+  complete implemented-species coverage, legacy config defaults, scope to common,
+  actual normal/shiny rolls and invalid selection modes.
+- Validation: build -PrctCompat=true --offline SUCCESS (2m27s); all 15 required
+  Minecraft tests PASS (22.64s), including the new rarity test and existing full
+  tier runs/payout/failure tests. Dependency-free checks also passed. Verified
+  packaged rarity class and common spawn_rarity default in
+  build/libs/mondungeons-1.1.0.jar. Test server used a preserved older loot config,
+  exercising upgrade fallback. No manual gameplay check; no UI changes needed.
+  Changes remain local and uncommitted on feature/common-pokemon-rarity.
+
 ## Push version 1.1.0 (2026-11-11)
+- Pushed commit 5a62bbf89334407c47a95537764c23476caf890c to
+  origin/feature/1.1.0-tier-rounds and set upstream tracking. All 23 reviewed
+  source/resource/test/doc files included; working tree clean after push.
+  GitHub Actions run 43152602911 verified SUCCESS for that exact commit:
+  https://github.com/Raul001R/MonDungeons/actions/runs/43152602911 .
+  Main untouched. This post-push handoff is a local note only.
 - User explicitly requested pushing the completed 1.1.0 update to Git.
   Commit the reviewed source, tests, resources, README and handoff on
   feature/1.1.0-tier-rounds, then push that branch; leave main untouched.
@@ -873,3 +989,6 @@
 - Triggers once per opening, after loot generation, including double chests and other vanilla ChestMenu containers (barrels/chest minecarts). Reopening a chest with a key announces again. No message for keys only in the player's inventory, empty chests, failed opens or non-chest menus. No item mutation or consumption.
 - Localization: message.mondungeons.dungeon_key_found in en_us.json. Existing running client requires restart to load the new code.
 - Validation: gradlew.bat build --offline SUCCESS, including mixin Java/Kotlin compilation and remapped jar. In-world chat trigger not manually exercised.
+
+## Random Pokemon prize clarification (2026-11-12)
+- Verified DungeonPayout.roll: reward entry uses configured tier odds/entry weights; a random Pokemon prize then selects uniformly from PokemonSpecies.implemented. No species rarity/spawn weighting or legendary exclusion in this selection. Same selection for random shiny prizes; configured properties apply afterward. Explanation only; no gameplay changes or tests needed.

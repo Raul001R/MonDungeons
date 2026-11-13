@@ -58,6 +58,9 @@ object DungeonPayout {
                     "Unknown reward Pokemon: ${data.get("spec").asString}"
                 }
                 require(PokemonSpecies.implemented.isNotEmpty())
+                val selection = data.get("speciesSelection")?.asString ?: "uniform"
+                require(selection in setOf("uniform", "spawn_rarity")) { "Invalid speciesSelection: $selection" }
+                if (species == "random" && selection == "spawn_rarity") DungeonPokemonRarity.loadedPool()
             }
             else -> error("Unknown reward type")
         }
@@ -86,7 +89,11 @@ object DungeonPayout {
             return RolledDungeonReward(reward.groupId, "${stack.count} x ${stack.hoverName.string}", stack, null)
         }
         val properties = PokemonProperties.parse(data.get("spec").asString)
-        if (properties.species == "random") properties.species = PokemonSpecies.implemented.random().name
+        if (properties.species == "random") {
+            properties.species = if (data.get("speciesSelection")?.asString == "spawn_rarity") {
+                DungeonPokemonRarity.roll()
+            } else PokemonSpecies.implemented.random().name
+        }
         val pokemon = properties.create(player)
         val actualLabel = (if (pokemon.shiny) "Shiny " else "") + pokemon.species.translatedName.string
         return RolledDungeonReward(reward.groupId, actualLabel, null, pokemon)

@@ -83,7 +83,25 @@ class DungeonRosterGameTests : FabricGameTest {
     }
 
     @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 400)
-    fun increasedChestOddsAndExistingChestInsertion(helper: GameTestHelper) {
+    fun reducedChestOddsAndExistingChestInsertion(helper: GameTestHelper) {
+        val tiers = DungeonLootData.tiers.values
+        val dir = java.nio.file.Files.createTempDirectory("dungeon-chest-rate-tests-")
+        val file = dir.resolve("dungeon-chests.json")
+        val legacy = """{"commonKeyChance":0.10}"""
+        java.nio.file.Files.writeString(file, legacy)
+        check(kotlin.math.abs(DungeonChestSettings.load(tiers, file) - 1f / 12) < 0.000001)
+        val migrated = java.nio.file.Files.readString(file)
+        check(JsonParser.parseString(migrated).asJsonObject.get("commonKeyChance").asDouble == 0.05)
+        check(java.nio.file.Files.list(dir).use { files -> files.anyMatch {
+            it.fileName.toString().startsWith("dungeon-chests.backup-") && java.nio.file.Files.readString(it) == legacy
+        } })
+        DungeonChestSettings.load(tiers, file)
+        check(java.nio.file.Files.readString(file) == migrated) // Migration is one-time.
+        java.nio.file.Files.writeString(file, """{"commonKeyChance":0.02}""")
+        check(kotlin.math.abs(DungeonChestSettings.load(tiers, file) - 1f / 30) < 0.000001)
+        check(JsonParser.parseString(java.nio.file.Files.readString(file)).asJsonObject.get("commonKeyChance").asDouble == 0.02)
+        java.nio.file.Files.writeString(file, """{"schemaVersion":2,"commonKeyChance":0.10}""")
+        check(kotlin.math.abs(DungeonChestSettings.load(tiers, file) - 1f / 6) < 0.000001) // Explicit new overrides stay configurable.
         val params = net.minecraft.world.level.storage.loot.LootParams.Builder(helper.level)
             .withParameter(net.minecraft.world.level.storage.loot.parameters.LootContextParams.ORIGIN,
                 net.minecraft.world.phys.Vec3.atCenterOf(helper.absolutePos(net.minecraft.core.BlockPos(1, 2, 1))))
@@ -98,7 +116,7 @@ class DungeonRosterGameTests : FabricGameTest {
             if (keys.singleOrNull()?.get(net.minecraft.core.component.DataComponents.CUSTOM_DATA)?.copyTag()
                     ?.getString("dungeon_key_tier") == "common") common++
         }
-        check(common in 400..600) { "Expected about10% common keys, got $common/5000" }
+        check(common in 180..320) { "Expected about5% common keys, got $common/5000" }
         val relative = net.minecraft.core.BlockPos(1, 2, 1)
         helper.setBlock(relative, net.minecraft.world.level.block.Blocks.CHEST)
         val pos = helper.absolutePos(relative)
@@ -109,6 +127,11 @@ class DungeonRosterGameTests : FabricGameTest {
             helper.level.server.createCommandSourceStack().withSuppressedOutput())
         check(chest.getItem(0).`is`(net.minecraft.world.item.Items.DIAMOND) && chest.getItem(0).count == 7)
         check((0 until chest.containerSize).sumOf { if (chest.getItem(it).`is`(DungeonItems.DUNGEON_KEY)) chest.getItem(it).count else 0 } == 1)
+        val existingKey = (0 until chest.containerSize).map { chest.getItem(it) }.single { it.`is`(DungeonItems.DUNGEON_KEY) }.copy()
+        DungeonChestSettings.load(tiers, file)
+        check((0 until chest.containerSize).any { slot ->
+            net.minecraft.world.item.ItemStack.matches(chest.getItem(slot), existingKey)
+        }) // Applying settings never rewrites a chest's existing key.
         helper.succeed()
     }
 

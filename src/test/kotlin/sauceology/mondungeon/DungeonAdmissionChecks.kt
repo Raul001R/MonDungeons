@@ -44,5 +44,30 @@ fun main() {
     lock.clear()
     lock.clear() // Cleanup remains safe when repeated by lifecycle callbacks.
     check(lock.active == null)
+    checkDungeonQueue()
     println("Dungeon admission checks passed: ordering, exclusivity, persistence/teleport/rollback failures, retry and repeated cleanup")
+}
+
+private fun checkDungeonQueue() {
+    val queue = DungeonQueue<String>()
+    val alice = java.util.UUID.randomUUID()
+    val bob = java.util.UUID.randomUUID()
+    val chris = java.util.UUID.randomUUID()
+    queue.join(alice, "alice-key"); queue.join(bob, "bob-key"); queue.join(alice, "replacement")
+    check(queue.position(alice) == 1 && queue.position(bob) == 2)
+    val first = requireNotNull(queue.reserve("north", 10, 600))
+    check(first.player == alice && first.offer == "alice-key" && first.expires == 610L)
+    check(queue.position(alice) == 0 && queue.reserved("north"))
+    check(runCatching { queue.reserve("north", 10, 600) }.isFailure)
+    queue.join(chris, "chris-key")
+    check(queue.answer(bob, first.token) == null && queue.answer(alice, "forged") == null)
+    val second = requireNotNull(queue.reserve("south", 10, 600))
+    check(second.player == bob && second.token != first.token)
+    check(queue.answer(alice, first.token) == first && queue.answer(alice, first.token) == null)
+    check(!queue.reserved("north") && queue.reserved("south"))
+    check(queue.reserve("north", 20, 600)?.player == chris)
+    check(queue.remove(bob) == second && !queue.contains(bob))
+    queue.clear(); queue.clear()
+    check(queue.invitations.isEmpty() && !queue.hasWaiting && queue.position(chris) == -1)
+    println("Dungeon queue checks passed: FIFO, two-slot reservations, duplicate joins, forged/replayed replies and cleanup")
 }

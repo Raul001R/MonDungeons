@@ -38,6 +38,9 @@ fun checkDungeonSettings(base: DungeonRoundPlan, roster: DungeonEncounterRoster)
         defaults.roundsByTier.keys.forEach { candidate.plan(it, base) }
     }
     store.reload()
+    check(store.current.queueConfirmationSeconds == 30)
+    store.set("queue.confirmationSeconds", "45")
+    check(store.current.queueConfirmationSeconds == 45)
     check(store.current.regularIvCap == 12 && store.current.regularEvMultiplier == 0.25)
     check(Files.readString(legacy) == """{"regularIvCap":12,"regularEvMultiplier":0.25}""")
     val frozen = store.current.plan("common", base)
@@ -51,7 +54,8 @@ fun checkDungeonSettings(base: DungeonRoundPlan, roster: DungeonEncounterRoster)
         "runs.roundsByTier.common" to "3.5", "runs.roundsByTier.common" to "\"3\"",
         "trainers.regularIvCap" to "32", "trainers.regularEvMultiplier" to "-0.1",
         "trainers.regularEvMultiplier" to "NaN", "leaderboard.pageSize" to "11",
-        "runs.typo.common" to "3").forEach { (path, value) ->
+        "queue.confirmationSeconds" to "0", "queue.confirmationSeconds" to "1.5",
+        "queue.confirmationSeconds" to "107374183", "runs.typo.common" to "3").forEach { (path, value) ->
         check(runCatching { store.set(path, value) }.isFailure) { "$path=$value should fail" }
         check(Files.readString(file) == goodFile && store.current == goodSettings)
     }

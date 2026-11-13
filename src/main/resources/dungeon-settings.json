@@ -13,5 +13,8 @@
   },
   "leaderboard": {
     "pageSize": 8
+  },
+  "queue": {
+    "confirmationSeconds": 30
   }
 }

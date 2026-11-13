@@ -26,6 +26,15 @@ object DungeonLootData {
             }
         }
         val root = Files.newBufferedReader(config).use { JsonParser.parseReader(it).asJsonObject }
+        // Older server configs inherit the new selection policy without rewriting owner loot tables.
+        val bundled = requireNotNull(javaClass.getResourceAsStream("/dungeon-loot.json")).bufferedReader().use {
+            JsonParser.parseReader(it).asJsonObject
+        }
+        val selectionByGroup = root.getAsJsonObject("randomPokemonSelectionByGroup")
+            ?: bundled.getAsJsonObject("randomPokemonSelectionByGroup")
+        require(selectionByGroup.entrySet().all { it.value.asString in setOf("uniform", "spawn_rarity") }) {
+            "randomPokemonSelectionByGroup values must be uniform or spawn_rarity"
+        }
         val groups = root.getAsJsonObject("rewardTiers")
         val loadedTables = linkedMapOf<ResourceLocation, DungeonRewardTable>()
         tiers = root.getAsJsonObject("keyTiers").entrySet().associate { (id, value) ->
@@ -61,7 +70,14 @@ object DungeonLootData {
                         if (reward.has("items")) require(reward.getAsJsonArray("items").size() > 0)
                         require(reward.get("count").asBigDecimal.intValueExact() > 0)
                     }
-                    DungeonReward(reward.deepCopy(), chance / 100.0 * weights[index] / total, group)
+                    val resolved = reward.deepCopy()
+                    if (type == "pokemon") {
+                        val selection = reward.get("speciesSelection")?.asString
+                            ?: selectionByGroup.get(group)?.asString ?: "uniform"
+                        require(selection in setOf("uniform", "spawn_rarity")) { "Invalid speciesSelection: $selection" }
+                        resolved.addProperty("speciesSelection", selection)
+                    }
+                    DungeonReward(resolved, chance / 100.0 * weights[index] / total, group)
                 }
             }
             val summaries = odds.map { (group, chance) ->

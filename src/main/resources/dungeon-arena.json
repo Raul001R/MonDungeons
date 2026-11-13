@@ -1,5 +1,5 @@
 {
-  "arena": null,
+  "arenas": {},
   "returnRetryTicks": 20,
   "spinTicks": 100
 }

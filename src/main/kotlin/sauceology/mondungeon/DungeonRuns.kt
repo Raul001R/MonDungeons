@@ -14,7 +14,7 @@ import java.util.UUID
 data class ActiveDungeon(val playerUuid: UUID, val keyTierId: String, val returnPos: DungeonPosition,
                          val key: ItemStack, val table: DungeonRewardTable, var currentRound: Int = 1,
                          var payout: RolledDungeonReward? = null, var spinRemaining: Int = 0,
-                         val runId: UUID = UUID.randomUUID())
+                         val runId: UUID = UUID.randomUUID(), val arenaId: String = "default")
 private data class RaidOffer(val token: String, val hand: InteractionHand, val key: ItemStack, val roundCount: Int)
 
 /** One instance per server. Network callbacks and lifecycle events run on its server thread. */
@@ -22,19 +22,37 @@ class DungeonRuns(private val server: MinecraftServer,
     internal val recovery: DungeonReturnRecovery = DungeonReturnRecovery(server),
     private val rewardTable: (DungeonKeyTier) -> DungeonRewardTable = { DungeonLootData.tables.getValue(it.lootTableId) },
     private val presentation: DungeonPresentation = NetworkDungeonPresentation,
-    val leaderboard: DungeonLeaderboard = DungeonLeaderboard(server)) {
-    private val config = DungeonArenaConfig()
+    val leaderboard: DungeonLeaderboard = DungeonLeaderboard(server),
+    private val config: DungeonArenaConfig = DungeonArenaConfig()) {
     private val offers = mutableMapOf<UUID, RaidOffer>()
     private val logger = LoggerFactory.getLogger("mondungeons/runs")
     private var ticksUntilRetry = 0
     private var closing = false
     private var lastBroadcastOccupied = false
-    private val admission = DungeonAdmission<ActiveDungeon>()
-    val active: ActiveDungeon? get() = admission.active // null is the global lock's free state.
-    private val gauntlet = DungeonGauntlet(server,
-        onRound = { player, round -> active?.takeIf { it.playerUuid == player }?.currentRound = round },
-        onComplete = { player -> finishGauntlet(player, true) },
-        onFailure = { player -> finishGauntlet(player, false) })
+    private inner class Slot {
+        val admission = DungeonAdmission<ActiveDungeon>()
+        val gauntlet = DungeonGauntlet(server,
+            onRound = { player, round -> admission.active?.takeIf { it.playerUuid == player }?.currentRound = round },
+            onComplete = { player -> finishGauntlet(player, true) },
+            onFailure = { player -> finishGauntlet(player, false) })
+    }
+    private val slots = linkedMapOf<String, Slot>()
+    private val queue = DungeonQueue<RaidOffer>()
+    private var queueClock = 0L
+    val activeRuns: Map<UUID, ActiveDungeon> get() = slots.values.mapNotNull { it.admission.active }.associateBy { it.playerUuid }
+    // Compatibility view for callers inspecting a single-arena run; capacity uses activeRuns/freeArena.
+    val active: ActiveDungeon? get() = activeRuns.values.firstOrNull()
+    val occupied: Boolean get() = queue.hasWaiting || (config.arenas.isNotEmpty() && freeArena() == null)
+    private fun slot(id: String) = slots.getOrPut(id) { Slot() }
+    private fun playerSlot(player: UUID) = slots.values.firstOrNull { it.admission.active?.playerUuid == player }
+    private fun usable(position: DungeonPosition): Boolean {
+        val level = server.getLevel(position.dimension) ?: return false
+        val pos = BlockPos.containing(position.position)
+        return level.worldBorder.isWithinBounds(pos) && pos.y >= level.minBuildHeight && pos.y < level.maxBuildHeight
+    }
+    private fun freeArena(): String? = config.arenas.entries.firstOrNull { (id, position) ->
+        slots[id]?.admission?.active == null && !queue.reserved(id) && usable(position)
+    }?.key
 
     fun offer(player: ServerPlayer, hand: InteractionHand, stack: ItemStack): String {
         val token = UUID.randomUUID().toString()
@@ -48,12 +66,20 @@ class DungeonRuns(private val server: MinecraftServer,
         val offer = offers[player.uuid] ?: return
         if (offer.token != token) return
         offers.remove(player.uuid) // A request is single-use, including rejected requests.
+        if (queue.contains(player.uuid)) return queueStatus(player)
+        startOffer(player, offer)
+    }
+
+    private fun startOffer(player: ServerPlayer, offer: RaidOffer, reservedArena: String? = null) {
         if (closing) return
-        if (active != null) return tell(player, "occupied")
+        if (playerSlot(player.uuid) != null) return tell(player, "already_running")
         if (player.uuid in recovery.pending()) return tell(player, "return_pending")
         if (!player.isAlive || player.isSpectator || player.isSleeping || player.isPassenger ||
             BattleRegistry.getBattleByParticipatingPlayer(player) != null) return tell(player, "cannot_enter")
-        val held = player.getItemInHand(offer.hand)
+        // Queued players can move the original key to another inventory slot while waiting.
+        val held = if (reservedArena == null) player.getItemInHand(offer.hand) else
+            (0 until player.inventory.containerSize).map { player.inventory.getItem(it) }
+                .firstOrNull { !it.isEmpty && ItemStack.isSameItemSameComponents(it, offer.key) } ?: ItemStack.EMPTY
         if (held.isEmpty || !ItemStack.isSameItemSameComponents(held, offer.key)) return tell(player, "key_changed")
         val tier = DungeonItems.tier(held) ?: return tell(player, "key_changed")
         val table = rewardTable(tier)
@@ -64,21 +90,28 @@ class DungeonRuns(private val server: MinecraftServer,
         if (!presentation.available(player)) {
             return tell(player, "ui_unavailable")
         }
-        val arena = config.arena ?: return tell(player, "arena_unconfigured")
-        val level = server.getLevel(arena.dimension) ?: return tell(player, "arena_unavailable")
-        val pos = BlockPos.containing(arena.position)
-        if (!level.worldBorder.isWithinBounds(pos) || pos.y < level.minBuildHeight || pos.y >= level.maxBuildHeight) {
-            return tell(player, "arena_unavailable")
-        }
-        val prepared = try { gauntlet.prepare(player, tier.id) } catch (exception: Exception) {
+        if (config.arenas.isEmpty()) return tell(player, "arena_unconfigured")
+        if (config.arenas.values.none(::usable)) return tell(player, "arena_unavailable")
+        val prepared = try { slot(config.arenas.keys.first()).gauntlet.prepare(player, tier.id) } catch (exception: Exception) {
             logger.error("Dungeon trainer/party preflight failed", exception)
             return tell(player, "trainers_unavailable")
         }
         if (prepared.plan.rounds.size != offer.roundCount) return tell(player, "settings_changed")
+        if (reservedArena == null) serviceQueue() // Older waiters always get the first free slots.
+        val arenaId = reservedArena ?: freeArena()
+        if (arenaId == null) {
+            if (!presentation.queueAvailable(player)) return tell(player, "ui_unavailable")
+            queue.join(player.uuid, offer)
+            queueStatus(player)
+            return
+        }
+        val arena = config.arenas[arenaId]?.takeIf(::usable) ?: return tell(player, "arena_unavailable")
+        val currentSlot = slot(arenaId)
+        if (currentSlot.admission.active != null) return tell(player, "occupied")
         val origin = DungeonPosition.capture(player)
-        val run = ActiveDungeon(player.uuid, tier.id, origin, held.copyWithCount(1), table)
+        val run = ActiveDungeon(player.uuid, tier.id, origin, held.copyWithCount(1), table, arenaId = arenaId)
         try {
-            if (!admission.enter(run,
+            if (!currentSlot.admission.enter(run,
                     remember = {
                         recovery.remember(player.uuid, origin, run.key, run.runId)
                         DungeonDurableFiles.savePlayer(player)
@@ -87,12 +120,12 @@ class DungeonRuns(private val server: MinecraftServer,
                 return tell(player, "occupied")
             }
             tell(player, "entered")
-            gauntlet.start(player, prepared)
+            currentSlot.gauntlet.start(player, prepared)
         } catch (exception: Exception) {
             logger.error("Could not enter dungeon for {}", player.uuid, exception)
-            if (active?.playerUuid == player.uuid) {
-                admission.clear()
-                gauntlet.cancel()
+            if (currentSlot.admission.active?.playerUuid == player.uuid) {
+                currentSlot.admission.clear()
+                currentSlot.gauntlet.cancel()
                 restore(player.uuid)
             }
             tell(player, "entry_failed")
@@ -100,11 +133,10 @@ class DungeonRuns(private val server: MinecraftServer,
     }
 
     fun exit(player: ServerPlayer): Boolean {
-        if (active?.playerUuid == player.uuid) {
-            admission.clear()
-            gauntlet.cancel()
-        }
+        val queued = leaveQueue(player)
+        playerSlot(player.uuid)?.let { it.admission.clear(); it.gauntlet.cancel() }
         if (player.uuid !in recovery.pending()) {
+            if (queued) return true
             tell(player, "no_run")
             return false
         }
@@ -112,11 +144,11 @@ class DungeonRuns(private val server: MinecraftServer,
         return true
     }
 
-    fun setArena(player: ServerPlayer): Boolean {
-        if (active != null) { tell(player, "occupied"); return false }
+    fun setArena(player: ServerPlayer, id: String = "default"): Boolean {
+        if (slots[id]?.admission?.active != null || queue.reserved(id)) { tell(player, "arena_busy"); return false }
         return try {
-            config.setArena(DungeonPosition.capture(player))
-            tell(player, "arena_set")
+            config.setArena(id, DungeonPosition.capture(player))
+            player.sendSystemMessage(Component.translatable("message.mondungeons.arena_set", id))
             true
         } catch (exception: Exception) {
             logger.error("Could not save dungeon arena", exception)
@@ -125,12 +157,108 @@ class DungeonRuns(private val server: MinecraftServer,
         }
     }
 
+    fun arenaDescriptions(): List<String> = config.arenas.map { (id, position) ->
+        val state = when {
+            slots[id]?.admission?.active != null -> "running"
+            queue.reserved(id) -> "reserved"
+            !usable(position) -> "unavailable"
+            else -> "free"
+        }
+        "$id: ${position.dimension.location()} ${position.position.x}, ${position.position.y}, ${position.position.z} ($state)"
+    }
+
+    fun removeArena(id: String): Boolean {
+        if (slots[id]?.admission?.active != null || queue.reserved(id) || (config.arenas.size == 1 && queue.hasWaiting)) return false
+        return try {
+            if (!config.removeArena(id)) return false
+            slots.remove(id)?.gauntlet?.close()
+            true
+        } catch (exception: Exception) { logger.error("Could not remove dungeon arena {}", id, exception); false }
+    }
+
+    fun queuePosition(player: UUID): Int = queue.position(player)
+
+    fun queueStatus(player: ServerPlayer) {
+        val position = queue.position(player.uuid)
+        if (position > 0) player.sendSystemMessage(Component.translatable("message.mondungeons.queue_position", position))
+        else tell(player, if (position == 0) "queue_invited" else "queue_none")
+    }
+
+    fun leaveQueue(player: ServerPlayer): Boolean {
+        if (!queue.contains(player.uuid)) return false
+        queue.remove(player.uuid)?.let(::dismiss)
+        tell(player, "queue_left")
+        return true
+    }
+
+    fun answerQueue(player: ServerPlayer, token: String, accept: Boolean) {
+        val invitation = queue.answer(player.uuid, token) ?: return // Wrong-player, stale and duplicate replies do nothing.
+        dismiss(invitation)
+        try {
+            when {
+                closing -> Unit
+                queueClock >= invitation.expires -> tell(player, "queue_expired")
+                !accept -> tell(player, "queue_left")
+                else -> startOffer(player, invitation.offer, invitation.arena)
+            }
+        } finally { serviceQueue() }
+    }
+
+    private fun dismiss(invitation: DungeonQueueInvite<RaidOffer>) {
+        val player = server.playerList.getPlayer(invitation.player) ?: return
+        try { presentation.prompt(player, RaidQueuePromptPayload(invitation.token, 0, "", 0)) }
+        catch (exception: Exception) { logger.warn("Could not dismiss dungeon queue prompt for {}", player.uuid, exception) }
+    }
+
+    private fun serviceQueue() {
+        if (closing) return
+        queue.invitations.forEach { invitation ->
+            val player = server.playerList.getPlayer(invitation.player)
+            if (queueClock >= invitation.expires || player == null || !player.isAlive ||
+                config.arenas[invitation.arena]?.let(::usable) != true) {
+                queue.remove(invitation.player)
+                dismiss(invitation)
+                if (player != null) tell(player, "queue_expired")
+            }
+        }
+        while (queue.hasWaiting) {
+            val arena = freeArena() ?: break
+            val seconds = DungeonSettingsConfig.current.queueConfirmationSeconds
+            val invitation = queue.reserve(arena, queueClock, seconds.toLong() * 20) ?: break
+            val player = server.playerList.getPlayer(invitation.player)
+            if (player == null) { queue.remove(invitation.player); continue }
+            val invalid = when {
+                !player.isAlive || player.isSpectator || player.isSleeping || player.isPassenger ||
+                    BattleRegistry.getBattleByParticipatingPlayer(player) != null || playerSlot(player.uuid) != null -> "cannot_enter"
+                player.uuid in recovery.pending() -> "return_pending"
+                (0 until player.inventory.containerSize).none {
+                    val stack = player.inventory.getItem(it)
+                    !stack.isEmpty && ItemStack.isSameItemSameComponents(stack, invitation.offer.key)
+                } -> "key_changed"
+                !presentation.queueAvailable(player) -> "ui_unavailable"
+                else -> null
+            }
+            if (invalid != null) {
+                queue.remove(player.uuid)
+                tell(player, invalid)
+                continue
+            }
+            try {
+                presentation.prompt(player, RaidQueuePromptPayload(invitation.token, seconds,
+                    invitation.offer.key.hoverName.string, invitation.offer.roundCount))
+                tell(player, "queue_invited")
+            } catch (exception: Exception) {
+                queue.remove(player.uuid)
+                logger.warn("Could not invite dungeon queue player {}", player.uuid, exception)
+                tell(player, "ui_unavailable")
+            }
+        }
+    }
+
     fun disconnect(player: UUID) {
         offers.remove(player)
-        if (active?.playerUuid == player) {
-            admission.clear()
-            gauntlet.cancel()
-        }
+        queue.remove(player)
+        playerSlot(player)?.let { it.admission.clear(); it.gauntlet.cancel() }
         // The pre-teleport journal remains until a live player can be restored.
     }
 
@@ -141,19 +269,21 @@ class DungeonRuns(private val server: MinecraftServer,
     }
 
     fun rejoin(player: ServerPlayer) {
-        if (active?.playerUuid != player.uuid) restore(player.uuid)
+        if (playerSlot(player.uuid) == null) restore(player.uuid)
     }
 
     fun tick() {
-        active?.let { run ->
+        queueClock++
+        activeRuns.values.toList().forEach { run ->
             val player = server.playerList.getPlayer(run.playerUuid)
             if (player == null || !player.isAlive) disconnect(run.playerUuid)
         }
-        active?.let { run ->
+        activeRuns.values.toList().forEach { run ->
             if (run.payout != null && --run.spinRemaining <= 0) finishPayout(run)
         }
-        gauntlet.tick()
-        val occupied = active != null
+        slots.values.toList().forEach { it.gauntlet.tick() }
+        serviceQueue()
+        val occupied = occupied
         if (lastBroadcastOccupied != occupied) {
             lastBroadcastOccupied = occupied
             server.playerList.players.forEach { player ->
@@ -165,20 +295,25 @@ class DungeonRuns(private val server: MinecraftServer,
         }
         if (ticksUntilRetry-- > 0) return
         ticksUntilRetry = config.returnRetryTicks - 1
-        recovery.pending().keys.filter { it != active?.playerUuid }.forEach(::restore)
+        recovery.pending().keys.filter { it !in activeRuns }.forEach(::restore)
     }
 
     fun close() {
         closing = true
-        admission.clear()
-        try { gauntlet.close() } finally {
-            offers.clear()
-            recovery.pending().keys.forEach(::restore)
+        queue.invitations.forEach(::dismiss)
+        queue.clear()
+        slots.values.forEach { it.admission.clear() }
+        slots.values.forEach {
+            try { it.gauntlet.close() } catch (exception: Exception) { logger.error("Could not close dungeon gauntlet", exception) }
         }
+        slots.clear()
+        offers.clear()
+        recovery.pending().keys.forEach(::restore)
     }
 
     private fun finishGauntlet(playerId: UUID, complete: Boolean) {
-        val run = active?.takeIf { it.playerUuid == playerId } ?: return
+        val currentSlot = playerSlot(playerId) ?: return
+        val run = currentSlot.admission.active ?: return
         if (run.payout != null) return // Duplicate final-victory callbacks never reroll.
         val player = server.playerList.getPlayer(playerId)
         if (complete && player != null) {
@@ -190,19 +325,19 @@ class DungeonRuns(private val server: MinecraftServer,
                 presentation.show(player,
                     RaidPayoutPayload(prize.label, prize.group, config.spinTicks, "spinning",
                         run.table.rewards.map { it.definition.get("label")?.asString ?: "Reward" }))
-                return // Keep the global lock until the server grants the prize.
+                return // Keep this arena occupied until the server grants the prize.
             } catch (exception: Exception) {
                 logger.error("Could not roll dungeon reward for {}", playerId, exception)
                 tell(player, "payout_failed")
             }
         }
-        admission.clear()
+        currentSlot.admission.clear()
         if (!complete && player != null) tell(player, "gauntlet_failed")
         restore(playerId)
     }
 
     private fun finishPayout(run: ActiveDungeon) {
-        // Keep the lock through grant and return. No subsequent tick can repeat this payout.
+        // Keep this arena occupied through grant and return. Other arenas keep running.
         run.spinRemaining = Int.MAX_VALUE
         val player = server.playerList.getPlayer(run.playerUuid)
         val prize = requireNotNull(run.payout)
@@ -219,7 +354,7 @@ class DungeonRuns(private val server: MinecraftServer,
             result = "error"
             if (player != null) tell(player, "payout_error")
         } finally {
-            try { restore(run.playerUuid) } finally { admission.clear() }
+            try { restore(run.playerUuid) } finally { slots[run.arenaId]?.admission?.clear() }
         }
         // Send after teleport so a dimension's loading screen cannot hide the final result.
         if (player != null) try {

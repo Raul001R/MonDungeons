@@ -13,6 +13,11 @@ object RaidUi {
         PayloadTypeRegistry.playS2C().register(RaidAvailabilityPayload.TYPE, RaidAvailabilityPayload.CODEC)
         PayloadTypeRegistry.playS2C().register(RaidPayoutPayload.TYPE, RaidPayoutPayload.CODEC)
         PayloadTypeRegistry.playC2S().register(RaidStartPayload.TYPE, RaidStartPayload.CODEC)
+        PayloadTypeRegistry.playS2C().register(RaidQueuePromptPayload.TYPE, RaidQueuePromptPayload.CODEC)
+        PayloadTypeRegistry.playC2S().register(RaidQueueReplyPayload.TYPE, RaidQueueReplyPayload.CODEC)
+        ServerPlayNetworking.registerGlobalReceiver(RaidQueueReplyPayload.TYPE) { payload, context ->
+            context.server().execute { DungeonRunService.runs?.answerQueue(context.player(), payload.token, payload.accept) }
+        }
         PayloadTypeRegistry.playS2C().register(RaidLeaderboardPayload.TYPE, RaidLeaderboardPayload.CODEC)
         PayloadTypeRegistry.playC2S().register(RaidLeaderboardRequest.TYPE, RaidLeaderboardRequest.CODEC)
         ServerPlayNetworking.registerGlobalReceiver(RaidLeaderboardRequest.TYPE) { payload, context ->
@@ -48,6 +53,6 @@ object RaidUi {
         }
         val token = DungeonRunService.runs?.offer(player, hand, stack) ?: return
         ServerPlayNetworking.send(player, RaidOddsPayload(tier.id, stack.hoverName.string, entries, token,
-            DungeonRunService.runs?.active != null, rounds))
+            DungeonRunService.runs?.occupied == true, rounds))
     }
 }

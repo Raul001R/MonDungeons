@@ -1,3 +1,4 @@
 {
-  "commonKeyChance": 0.10
+  "schemaVersion": 2,
+  "commonKeyChance": 0.05
 }

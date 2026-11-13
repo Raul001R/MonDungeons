@@ -4,11 +4,13 @@ Standalone Fabric/Kotlin addon for Minecraft 1.21.1 and Cobblemon 1.8.4.
 
 MonDungeons registers `mondungeons:dungeon_key` and adds a separate key roll to
 built-in vanilla `minecraft:chests/*` loot tables. Each newly generated chest has
-a default 10% common-key chance (rare 4.167%, epic 2%, legendary 0.5%; one key
-maximum per chest roll, about 16.667% for any key). Already generated loot is unchanged; datapack-replaced
+a default 5% common-key chance (rare 2.083%, epic 1%, legendary 0.25%; one key
+maximum per chest roll, about 8.333% for any key). Already generated loot is unchanged; datapack-replaced
 chest tables are respected. Using a tiered key opens the MonDungeons odds screen
 without consuming it. Start enters a trainer gauntlet in the configured
-arena, one player at a time. The arena remains unconfigured until you set it.
+arenas, one player per area. Areas remain unconfigured until you set them.
+When all areas are occupied, Start becomes Join Queue. The next waiting player
+gets a reserved slot and a Yes/No prompt before entering.
 Common keys have 3 rounds, rare 5, epic 7 and legendary 10. Every run ends with
 a boss included in that count (2/4/6/9 regular trainers, then the boss).
 Clearing all rounds pays one configured prize after a cosmetic spin and consumes
@@ -16,9 +18,14 @@ one key. Unresolved reward IDs must be configured before a live run can start.
 The key uses Minecraft's trial-key texture as a temporary visual.
 
 Chest rates are configured in `config/mondungeons/dungeon-chests.json` with
-`commonKeyChance` (default `0.10`). Other tiers retain the relative `chestWeight`
+`commonKeyChance` (default `0.05`). Other tiers retain the relative `chestWeight`
 ratios in `dungeon-loot.json`. Restart after changing these settings. The new
 file is created on upgrades; existing reward/round/arena configs are preserved.
+The 1.2.1 chest config uses `schemaVersion: 2`. An older config at the former
+default `commonKeyChance: 0.10` is backed up and migrated to `0.05` automatically;
+customized older values are preserved. Once upgraded, any explicit rate remains
+editable without another automatic change. Restart to apply these settings.
+Keys already inside chests or player inventories are never removed or changed.
 
 Already-created world chests that still have an unrolled loot table get the new
 roll on their first opening, even in old chunks. Previously opened chests have
@@ -39,14 +46,34 @@ compatibility-tested with MonDungeons. No additional mod was installed here.
 
 Build with JDK 25: `./gradlew.bat build`. Development Minecraft launches use JDK 21.
 The dependency/toolchain pins match the working custom-trainers reference project.
-Output: `build/libs/mondungeons-1.1.0.jar`. Install with Fabric API,
+Output: `build/libs/mondungeons-1.2.1.jar`. Install with Fabric API,
 Fabric Language Kotlin and Cobblemon on Minecraft 1.21.1.
 
 Commands use `/monDungeons` (`/mondungeons` is a lowercase alias):
-`/monDungeons exit` returns from your run and `/monDungeons setarena` sets the
-arena as an operator. `/setdungeon` remains the short arena setup command.
+`/monDungeons exit` returns from your run (or leaves the queue).
+Stand at each entrance and use `/setdungeon north`, `/setdungeon south`, etc.
+to save multiple named areas (operator level 2). Each area supports one player
+with independent battles and rewards. Give the areas enough physical space for
+their players and trainers. Reusing a name updates that area's entrance;
+`/setdungeon` without a name sets `default`. `/monDungeons setarena [name]`
+does the same thing. `/monDungeons arenas list` lists positions and slot status;
+`/monDungeons arenas remove <name>` removes an idle area. Running/reserved areas
+cannot be edited or removed. Exact duplicate entry positions are rejected.
 
-Version 1.1.0 settings are grouped in `config/mondungeons/dungeon-settings.json`:
+The queue is FIFO and requires a key. No teleport or key consumption happens
+while waiting. When a slot opens, it is reserved for the next eligible player
+until they select **Yes, Enter**, **No, Leave Queue**, or their confirmation
+window expires (30 seconds by default). Escape declines. Multiple free slots
+can invite successive players at the same time. New arrivals cannot take a
+reserved slot or pass waiting players. Decline, timeout, disconnect or death
+removes that player and passes the slot on. `/monDungeons queue status` shows
+your position; `/monDungeons queue leave` cancels waiting or a reservation.
+Acceptance rechecks the key (any inventory slot), party, availability and run
+settings, and records the return position at that moment. Invalid offers keep
+the key and release the reservation. Restart clears waiting/reservations and
+active battles; durable return/payout recovery remains per player.
+
+Version 1.2.1 settings are grouped in `config/mondungeons/dungeon-settings.json`:
 
 ```json
 {
@@ -54,7 +81,8 @@ Version 1.1.0 settings are grouped in `config/mondungeons/dungeon-settings.json`
     "roundsByTier": { "common": 3, "rare": 5, "epic": 7, "legendary": 10 }
   },
   "trainers": { "regularIvCap": 15, "regularEvMultiplier": 0.5 },
-  "leaderboard": { "pageSize": 8 }
+  "leaderboard": { "pageSize": 8 },
+  "queue": { "confirmationSeconds": 30 }
 }
 ```
 
@@ -67,6 +95,7 @@ mondungeons config set runs.roundsByTier.common 3
 mondungeons config set trainers.regularIvCap 15
 mondungeons config set trainers.regularEvMultiplier 0.5
 mondungeons config set leaderboard.pageSize 8
+mondungeons config set queue.confirmationSeconds 30
 mondungeons config reload
 ```
 
@@ -74,7 +103,8 @@ mondungeons config reload
 edits. Invalid changes preserve the last working settings and do not overwrite
 the invalid file. Valid file rewrites keep a uniquely named backup; missing settings
 are filled without resetting other values. Changes affect future runs; active
-runs retain their prepared rounds, stats and healing. If a run length changes
+runs retain their prepared rounds, stats and healing. Queue timeout changes apply
+to new invitations; an existing reservation retains its deadline. If a run length changes
 while a key menu is open, Start asks the player to reopen it to see the new length.
 Round counts must be 1 through the number of templates (10 by default); there
 must be exactly one final boss template. Short runs use the first N-1 regular
@@ -115,6 +145,26 @@ group chance times its normalized within-group weight. No second rewards
 file is maintained. The draft `TODO` IDs and Pokemon specs are preserved without
 registry validation; they must be resolved before Stage 6 payout is implemented.
 
+The **common reward pool's Random Pokemon** prize uses Cobblemon spawn rarity
+for every key tier. It first chooses an occupied world spawn bucket using the
+server's loaded `BestSpawner` world bucket weights, then chooses equally among
+the implemented species assigned to that bucket. Repeated biome/form spawn
+entries do not increase a species' odds; species found in multiple buckets use
+their most common bucket. Species without a matching world spawn use the rarest
+enabled bucket, so they remain eligible. Empty buckets are omitted and remaining
+weights normalized. This uses rarity buckets, not local biome/time conditions or
+individual spawn-entry weights.
+
+`randomPokemonSelectionByGroup` in `config/mondungeons/dungeon-loot.json`
+defaults to `{ "common": "spawn_rarity" }`. Older configs inherit this default
+without being rewritten. Set that map to `{ "common": "uniform" }` to restore
+equal species odds. An individual Pokemon reward can override it with
+`"speciesSelection": "uniform"` or `"speciesSelection": "spawn_rarity"`.
+Other reward groups (including the jackpot shiny prize) keep uniform species
+selection. Group odds and the chance of winning the Random Pokemon prize remain
+the configured values shown in the UI. Restart after editing the loot config;
+spawn datapack reloads are picked up on the next prize selection.
+
 Keys store `dungeon_key_tier` in vanilla `minecraft:custom_data`, giving each tier
 a distinct name and preventing different tiers from stacking together. Old,
 untagged Stage 1 keys remain generic; no tier is silently assigned to them.
@@ -122,8 +172,8 @@ Client and server should use matching tier configs for inventory tier names.
 Screen tier and reward odds are sent by the server; the client config does not
 control those values. The menu follows `dungeon-ui-spec.md`: four reward tiers,
 their configured tierOdds, example labels, and literal proportional odds bars.
-The green START RUN button becomes disabled DUNGEON IN USE while the global
-lock is occupied; changes are pushed to already-open menus.
+The green START RUN button becomes JOIN QUEUE while all slots are running/reserved;
+changes are pushed to already-open menus.
 Every configured reward is sent to the client. Hover a rarity to see its complete
 list, or click **View all >** to open its catalogue with stack counts, reward types
 and individual per-run chances. Catalogue pagination never truncates the pool;
@@ -143,8 +193,9 @@ Manual checks in a development world with cheats:
 - Compare default tier odds: common shows 1/9/30/60%, rare shows 3/17/40/40%,
   legendary shows 15/40/35/10%. These are reward-group chances, not the chance of
   a particular example item. All four rows should fit without pagination.
-- Open menus as two players, then have one start: the other's button should
-  switch to DUNGEON IN USE, then back to START RUN when the active run ends.
+- Open menus with more players than areas: the remaining buttons should
+  switch to JOIN QUEUE when all areas are running or reserved, then back to
+  START RUN when an area is free and no older waiter needs it.
 - Untagged or unknown-tier keys report an unrecognized tier without opening a
   misleading odds screen. No key should be consumed.
 - On a dedicated server, use different client reward odds and confirm the UI
@@ -172,10 +223,12 @@ Stage 4 arena setup and checks:
 The arena is deliberately **unconfigured** by default, as requested. Start reports
 that setup is needed and leaves your position/key unchanged. To configure it,
 build your arena, stand at its entrance facing the desired direction, and run
-`/setdungeon` (operator permission level 2). This saves your exact
+`/setdungeon <name>` (operator permission level 2). This saves your exact
 dimension, X/Y/Z, yaw and pitch to `config/mondungeons/dungeon-arena.json` and
 applies immediately. No structure or new dimension is generated. You can also
-edit this config and restart; `arena: null` disables entry. `returnRetryTicks`
+edit this config and restart; `"arenas": {}` disables entry. Older single-`arena`
+configs load as an area named `default`, preserving coordinates/facing and timer
+settings; the next arena edit saves the new `arenas` map. `returnRetryTicks`
 controls how often unresolved returns are retried (default 20 server ticks).
 
 1. Before configuring, try Start: expect the unconfigured message, no movement,
@@ -184,8 +237,9 @@ controls how often unresolved returns are retried (default 20 server ticks).
    and dimension with F3. Use a key and click Start. You should arrive at the
    saved arena entrance. Use `/monDungeons exit` to restore the original position,
    dimension and facing. Your key must remain. Repeat from another dimension.
-3. With two players, have player A start. Player B's Start must report occupied.
-   Player B's exit command must not release A's lock. After A exits, B can start.
+3. With one area and two players, have A start and B join the queue. B's exit
+   command leaves the queue without releasing A's slot. After rejoining, B gets
+   a Yes/No prompt when A exits. With two areas, two players can run together.
 4. Change/remove the held key or selected slot while the screen is open: Start
    must refuse if the original hand no longer holds the same key components.
    Reopen the screen for a new attempt. Repeated Start packets cannot start
@@ -194,17 +248,17 @@ controls how often unresolved returns are retried (default 20 server ticks).
    respawn, and expect return. Stop/restart the server while inside and reconnect;
    expect return. Other players must still be able to enter after cleanup.
 
-The global active run exists only in memory. A separate overworld SavedData
+Active runs and the queue exist only in memory. A separate overworld SavedData
 journal (`mondungeons_returns`) stores return obligations before teleportation,
 following the gym reference. Entries are removed only after a successful return
 and saving player data. Failed returns remain queued; a player with a pending
 return cannot start a new run. Exit, death, disconnect and shutdown release the
-active lock. Battle-specific failure handling remains for later stages.
+player's arena slot. Other active areas continue independently.
 
 `./gradlew.bat build --offline` also runs dependency-free admission checks for
-save-before-teleport ordering, global exclusivity, failed persistence/teleport/
+save-before-teleport ordering, per-slot exclusivity, FIFO reservations, failed persistence/teleport/
 rollback cleanup, retries and repeated cleanup. In-world/multiplayer checks
-above are still required. Rewards and key consumption are not implemented yet.
+above complement the Minecraft integration suite. Keys are consumed only on payout.
 
 Stage 5 gauntlet:
 
@@ -320,9 +374,9 @@ Stage 6 reward configuration:
 Stage 7 recovery:
 
 - Loss, an explicit forfeit response, an ended/missing battle with no victory,
-  disconnect, death and server stop abort the attempt and release the global
-  lock. Failed attempts have free retries. A restart never resumes a battle or
-  restores an occupied lock.
+  disconnect, death and server stop abort the attempt and release its arena
+  slot. Failed attempts have free retries through the queue. A restart never
+  resumes a battle or restores occupied/reserved slots.
 - The overworld `data/mondungeons_returns.dat` journal stores the exact origin,
   one-key snapshot and run ID before entry. Journal/player checkpoints use
   compressed NBT, forced temporary-file writes and atomic replacement; IO errors
@@ -359,6 +413,10 @@ actual form types, legal moves, PP limits, and skin/model dimensions, then
 exercise real singles/doubles battle starts with synthetic victory events
 through the 3/5/7/10-round runs and check final bosses, pre-boss healing, payouts,
 clear counts, persistence, console settings and recovery after a credit-save failure.
+The 1.2.0 suite also covers simultaneous arena battles/payouts, FIFO reservations,
+declines/timeouts, key changes, disconnect/shutdown cleanup, arena-config migration,
+queue packet codecs and weighted common Pokemon prizes. The test server uses a
+4 GB heap for concurrent native battles and RCT mock-player synchronization.
 They do not simulate a human playing the battles. Normal builds run the dependency-free
 admission and round progression checks without installing RCT.
 
@@ -370,9 +428,10 @@ then use the key and Start. The arena still needs to be built/configured by you.
 To inspect the redesigned odds screen without loading a world, use
 `./gradlew.bat runClient -PraidUiPreview=legendary --offline`. This developer-only
 preview uses local tier data and does not run in installed modpacks. START RUN
-is a visual-only button in preview mode; press L to toggle the occupied appearance
+is a visual-only button in preview mode; press L to toggle the Join Queue appearance
 and F8 at the title screen to reopen the preview.
 Use `-PraidUiPreview=spin` or `-PraidUiPreview=reward` to inspect the cosmetic
 spin and final reward screens without a world or actual payout.
+Use `-PraidUiPreview=queue` to inspect the Yes/No reservation prompt.
 The live screen uses server-sent odds and real lock status. Smaller windows omit
 the optional example text if needed, while keeping all four tiers visible.

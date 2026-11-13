@@ -8,6 +8,8 @@ import net.fabricmc.fabric.api.event.lifecycle.v1.ServerEntityEvents
 import com.cobblemon.mod.common.entity.npc.NPCEntity
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents
 import net.minecraft.commands.Commands.literal
+import net.minecraft.commands.Commands.argument
+import com.mojang.brigadier.arguments.StringArgumentType
 import net.minecraft.server.level.ServerPlayer
 
 object DungeonRunService {
@@ -33,11 +35,40 @@ object DungeonRunService {
             if (entity is NPCEntity && DungeonTrainer.TEMPORARY_TAG in entity.tags && !DungeonTrainer.isLive(entity.uuid)) entity.discard()
         }
         CommandRegistrationCallback.EVENT.register { dispatcher, _, _ ->
-            dispatcher.register(literal("setdungeon").requires { it.hasPermission(2) }.executes { context ->
+            fun arenaCommand(name: String) = literal(name).requires { it.hasPermission(2) }.executes { context ->
                 if (runs?.setArena(context.source.playerOrException) == true) 1 else 0
+            }.then(argument("id", StringArgumentType.word()).executes { context ->
+                if (runs?.setArena(context.source.playerOrException, StringArgumentType.getString(context, "id")) == true) 1 else 0
             })
+            fun listArenas(source: net.minecraft.commands.CommandSourceStack): Int {
+                val descriptions = runs?.arenaDescriptions().orEmpty()
+                if (descriptions.isEmpty()) source.sendSuccess({ net.minecraft.network.chat.Component.translatable("message.mondungeons.arena_unconfigured") }, false)
+                descriptions.forEach { description -> source.sendSuccess({ net.minecraft.network.chat.Component.literal(description) }, false) }
+                return descriptions.size
+            }
+            dispatcher.register(arenaCommand("setdungeon"))
             val root = dispatcher.register(literal("monDungeons")
                 .then(DungeonConfigCommands.tree())
+                .then(literal("arenas").requires { it.hasPermission(2) }.executes { listArenas(it.source) }
+                    .then(literal("list").executes { listArenas(it.source) })
+                    .then(literal("remove").then(argument("id", StringArgumentType.word()).executes { context ->
+                        val id = StringArgumentType.getString(context, "id")
+                        if (runs?.removeArena(id) == true) {
+                            context.source.sendSuccess({ net.minecraft.network.chat.Component.translatable("message.mondungeons.arena_removed", id) }, true)
+                            1
+                        } else {
+                            context.source.sendFailure(net.minecraft.network.chat.Component.translatable("message.mondungeons.arena_remove_failed"))
+                            0
+                        }
+                    })))
+                .then(literal("queue").executes { runs?.queueStatus(it.source.playerOrException); 1 }
+                    .then(literal("status").executes { runs?.queueStatus(it.source.playerOrException); 1 })
+                    .then(literal("leave").executes { context ->
+                        val player = context.source.playerOrException
+                        if (runs?.leaveQueue(player) == true) 1 else {
+                            player.sendSystemMessage(net.minecraft.network.chat.Component.translatable("message.mondungeons.queue_none")); 0
+                        }
+                    }))
                 .then(literal("checkrewards").requires { it.hasPermission(2) }.executes { context ->
                     val problems = DungeonLootData.tables.values.flatMap { table ->
                         DungeonPayout.problems(table).map { "${table.id}: $it" }
@@ -49,9 +80,7 @@ object DungeonRunService {
                 .then(literal("exit").executes { context ->
                     if (runs?.exit(context.source.playerOrException) == true) 1 else 0
                 })
-                .then(literal("setarena").requires { it.hasPermission(2) }.executes { context ->
-                    if (runs?.setArena(context.source.playerOrException) == true) 1 else 0
-                }))
+                .then(arenaCommand("setarena")))
             dispatcher.register(literal("mondungeons").redirect(root))
         }
     }

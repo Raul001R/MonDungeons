@@ -54,8 +54,10 @@ if (providers.gradleProperty('rctCompat').map { it.toBoolean() }.getOrElse(false
 tasks.named('processGametestResources') {
 	def withRct = providers.gradleProperty('rctCompat').map { it.toBoolean() }.getOrElse(false)
 	inputs.property 'rctCompat', withRct
+	def dungeonGameTests = withRct ? '"sauceology.mondungeon.DungeonBattleGameTests", "sauceology.mondungeon.DungeonFailureGameTests", "sauceology.mondungeon.DungeonRosterGameTests", "sauceology.mondungeon.DungeonQueueGameTests"' : ''
+	inputs.property 'dungeonGameTests', dungeonGameTests
 	filesMatching('fabric.mod.json') {
-		expand dungeonGameTests: withRct ? '"sauceology.mondungeon.DungeonBattleGameTests", "sauceology.mondungeon.DungeonFailureGameTests", "sauceology.mondungeon.DungeonRosterGameTests"' : ''
+		expand dungeonGameTests: dungeonGameTests
 	}
 }
 tasks.named('runGameTest') {
@@ -90,7 +92,8 @@ tasks.withType(JavaExec).configureEach {
 	dependsOn unpackCobblemonRuntime
 	classpath += fileTree(cobblemonRuntimeDirectory) { include '**/*.jar' }
 	javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(21) }
-	if (name == 'runGameTest') maxHeapSize = '2G'
+	// Concurrent native battles and RCT's mock-player sync need room alongside the full regression suite.
+	if (name == 'runGameTest') maxHeapSize = '4G'
 	if (name == 'runClient' && providers.gradleProperty('raidUiPreview').isPresent()) {
 		systemProperty 'mondungeons.raidUiPreview', providers.gradleProperty('raidUiPreview').get()
 	}

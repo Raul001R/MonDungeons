@@ -13,6 +13,60 @@ import net.minecraft.gametest.framework.GameTestHelper
 
 class DungeonBattleGameTests : FabricGameTest {
     @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
+    fun commonPokemonUseSpawnRarity(helper: GameTestHelper) {
+        val weights = linkedMapOf("common" to 94.0, "uncommon" to 5.0, "rare" to 0.5, "ultra-rare" to 0.2, "boss" to 0.3)
+        val species = setOf("pidgey", "rattata", "eevee", "dratini", "gible", "mew")
+        val spawns = listOf("pidgey" to "common", "pidgey" to "common", "pidgey" to "rare",
+            "rattata" to "common", "eevee" to "uncommon", "dratini" to "rare", "gible" to "ultra-rare")
+        val pool = DungeonPokemonRarity.buildPool(weights, species, spawns)
+        check(pool.flatMap { it.species }.toSet() == species)
+        check(pool.sumOf { it.species.size } == species.size) // Duplicate spawns/forms never increase species odds.
+        check(pool.single { it.id == "common" }.species == listOf("pidgey", "rattata"))
+        check(pool.single { it.id == "ultra-rare" }.species == listOf("gible", "mew"))
+        check(pool.none { it.id == "boss" }) // Empty buckets do not eat probability.
+        val total = pool.sumOf { it.weight }
+        var lower = 0.0
+        pool.forEach { bucket ->
+            check(DungeonPokemonRarity.selectBucket(pool, (lower + bucket.weight / 2) / total) === bucket)
+            lower += bucket.weight
+        }
+        check(DungeonPokemonRarity.selectBucket(pool, 0.0).id == "common")
+        check(DungeonPokemonRarity.selectBucket(pool, Math.nextDown(1.0)) === pool.last())
+        // Stratified draws measure the actual bucket distribution without a flaky random sample.
+        val counts = (0 until 100_000).groupingBy {
+            DungeonPokemonRarity.selectBucket(pool, (it + 0.5) / 100_000).id
+        }.eachCount()
+        pool.forEach { check(kotlin.math.abs(counts.getValue(it.id) - 100_000 * it.weight / total) <= 1) }
+        check(runCatching { DungeonPokemonRarity.buildPool(mapOf("common" to Double.NaN), species, spawns) }.isFailure)
+        check(runCatching { DungeonPokemonRarity.buildPool(mapOf("common" to 0.0), species, spawns) }.isFailure)
+
+        val loaded = DungeonPokemonRarity.loadedPool()
+        val implemented = com.cobblemon.mod.common.api.pokemon.PokemonSpecies.implemented.map { it.name }.toSet()
+        check(loaded.flatMap { it.species }.toSet() == implemented)
+        check(loaded.sumOf { it.species.size } == implemented.size)
+        check(loaded.single { it.id == "common" }.weight > loaded.single { it.id == "rare" }.weight)
+        val player = helper.makeMockServerPlayerInLevel()
+        try {
+            DungeonLootData.tables.values.forEach { table ->
+                val common = table.rewards.single { it.groupId == "common" && it.definition.get("type").asString == "pokemon" }
+                check(common.definition.get("speciesSelection").asString == "spawn_rarity")
+                val jackpot = table.rewards.single { it.groupId == "jackpot" && it.definition.get("type").asString == "pokemon" }
+                check(jackpot.definition.get("speciesSelection").asString == "uniform")
+                val isolated = DungeonRewardTable(MonDungeons.id("test/weighted_pokemon"), listOf(common.copy(probability = 1.0)), emptyList())
+                DungeonPayout.validate(isolated)
+                check(DungeonPayout.roll(isolated, player).pokemon!!.species.name in implemented)
+                val shinyData = common.definition.deepCopy().apply { addProperty("spec", "random shiny=true") }
+                val shiny = isolated.copy(rewards = listOf(common.copy(definition = shinyData, probability = 1.0)))
+                check(DungeonPayout.roll(shiny, player).pokemon!!.shiny)
+            }
+            val invalid = DungeonReward(com.google.gson.JsonParser.parseString(
+                """{"type":"pokemon","spec":"random","speciesSelection":"invalid"}""").asJsonObject, 1.0, "common")
+            check(runCatching { DungeonPayout.validate(DungeonRewardTable(MonDungeons.id("test/invalid"), listOf(invalid), emptyList())) }.isFailure)
+            helper.succeed()
+        } finally { player.discard() }
+    }
+
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     fun payoutDeliversExactlyOnceAndKeepsKeysOnFailure(helper: GameTestHelper) {
         val player = helper.makeMockServerPlayerInLevel()
         fun key(count: Int = 1) = net.minecraft.world.item.ItemStack(DungeonItems.DUNGEON_KEY, count).apply {

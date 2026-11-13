@@ -17,6 +17,10 @@ internal object RaidOddsPreview {
             val reopen = org.lwjgl.glfw.GLFW.glfwGetKey(client.window.window, org.lwjgl.glfw.GLFW.GLFW_KEY_F8) == org.lwjgl.glfw.GLFW.GLFW_PRESS
             if ((!opened || reopen) && client.overlay == null && client.screen is TitleScreen) {
                 opened = true
+                if (tierId == "queue") {
+                    client.setScreen(RaidQueueScreen(sauceology.mondungeon.RaidQueuePromptPayload("preview", 30, "Common Dungeon Key", 3), preview = true))
+                    return@register
+                }
                 if (tierId == "spin" || tierId == "reward") {
                     client.setScreen(RaidSpinScreen(sauceology.mondungeon.RaidPayoutPayload("Shiny Garchomp", "jackpot", 100,
                         if (tierId == "spin") "spinning" else "granted", listOf("Master Ball", "4 x Diamond", "Random shiny Pokemon", "Ability Patch"))))
