@@ -113,7 +113,7 @@ class DungeonRuns(private val server: MinecraftServer,
         try {
             if (!currentSlot.admission.enter(run,
                     remember = {
-                        recovery.remember(player.uuid, origin, run.key, run.runId)
+                        recovery.remember(player.uuid, origin, run.key, run.runId, DungeonSettingsConfig.current.leaderboardPoints(tier.id))
                         DungeonDurableFiles.savePlayer(player)
                     },
                     move = { move(player, arena) }, rollback = { restore(player.uuid) })) {
@@ -374,7 +374,7 @@ class DungeonRuns(private val server: MinecraftServer,
             } else {
                 // The paid receipt is durable before credit. Keep the return obligation until credit
                 // is also durable so a crash or write failure can retry without a second payout/clear.
-                leaderboard.record(player.uuid, player.gameProfile.name, entry.runId)
+                leaderboard.record(player.uuid, player.gameProfile.name, entry.runId, entry.leaderboardPoints)
             }
             // Save the restored player before clearing their durable return obligation.
             DungeonDurableFiles.savePlayer(player)

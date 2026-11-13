@@ -62,11 +62,12 @@ class DungeonFailureGameTests : FabricGameTest {
         check(runCatching { recovery.remember(id, origin, key(), runId) }.isFailure)
         check(recovery.pending().isEmpty() && !Files.exists(file))
         failWrites = false
-        recovery.remember(id, origin, key(), runId)
+        recovery.remember(id, origin, key(), runId, leaderboardPoints = 4)
         val legacySnapshot = NbtIo.readCompressed(file, NbtAccounter.unlimitedHeap())
         val reloaded = DungeonReturnRecovery(file, helper.level.registryAccess())
         check(reloaded.pending()[id] == origin)
         check(reloaded.record(id)?.runId == runId)
+        check(reloaded.record(id)?.leaderboardPoints == 4)
         check(ItemStack.isSameItemSameComponents(requireNotNull(reloaded.record(id)?.key), key()))
         failWrites = true
         check(runCatching { recovery.forget(id) }.isFailure)
@@ -78,11 +79,15 @@ class DungeonFailureGameTests : FabricGameTest {
         // Existing Stage4/6 SavedData files remain readable.
         val old = legacySnapshot
         val data = old.getCompound("data")
+        data.putInt("SchemaVersion", 2)
+        DungeonDurableFiles.write(file, old)
+        check(DungeonReturnRecovery(file, helper.level.registryAccess()).record(id)?.leaderboardPoints == 1)
         data.putInt("SchemaVersion", 1)
         data.getList("Returns", 10).getCompound(0).apply { remove("Run"); remove("Key") }
         DungeonDurableFiles.write(file, old)
         val legacy = DungeonReturnRecovery(file, helper.level.registryAccess())
         check(legacy.pending()[id] == origin && legacy.record(id)?.key == null)
+        check(legacy.record(id)?.leaderboardPoints == 1) // Older runs owed the original one-clear credit.
         legacy.forget(id)
 
         val player = helper.makeMockServerPlayerInLevel()
@@ -112,7 +117,7 @@ class DungeonFailureGameTests : FabricGameTest {
 
             val committed = PokemonProperties.parse("eevee level=5").create(player)
             val committedRun = UUID.randomUUID()
-            restarted.recovery.remember(player.uuid, origin, key(), committedRun)
+            restarted.recovery.remember(player.uuid, origin, key(), committedRun, leaderboardPoints = 4)
             restarted.recovery.preparePayout(player.uuid, committed.uuid)
             check(DungeonPayoutCommit.grant(player, key(), RolledDungeonReward("rare", "Eevee", null, committed), committedRun))
             failCredit = true
@@ -123,8 +128,10 @@ class DungeonFailureGameTests : FabricGameTest {
             restarted.rejoin(player)
             check(Cobblemon.storage.getParty(player).get(committed.uuid) != null)
             check(player.inventory.getItem(0).count == 1 && restarted.recovery.pending().isEmpty())
-            check(rankings.page(0, 8).entries.single().clears == 1L)
-            check(DungeonLeaderboard(rankingFile).page(0, 8).entries.single().clears == 1L)
+            check(rankings.page(0, 8).entries.single().clears == 4L)
+            check(DungeonLeaderboard(rankingFile).page(0, 8).entries.single().clears == 4L)
+            restarted.rejoin(player)
+            check(rankings.page(0, 8).entries.single().clears == 4L)
         } finally { restarted.close(); player.discard() }
         helper.succeed()
     }
@@ -259,7 +266,7 @@ class DungeonFailureGameTests : FabricGameTest {
         step()
     }
     @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 4000)
-    fun everyTierEndsWithBossPaysOnceAndCountsOneClear(helper: GameTestHelper) {
+    fun everyTierEndsWithBossPaysOnceAndCreditsTierPoints(helper: GameTestHelper) {
         val player = helper.makeMockServerPlayerInLevel()
         val payloads = mutableListOf<RaidPayoutPayload>()
         val display = object : DungeonPresentation {
@@ -269,6 +276,8 @@ class DungeonFailureGameTests : FabricGameTest {
         val rankings = leaderboard(helper)
         val runs = DungeonRuns(helper.level.server, journal(helper), { gems }, display, rankings)
         val tiers = listOf("common" to 3, "rare" to 5, "epic" to 7, "legendary" to 10)
+        val expectedTotals = listOf(1L, 3L, 6L, 10L)
+        val originalLegendaryPoints = DungeonSettingsConfig.current.leaderboardPoints("legendary")
         var tierIndex = 0
         val pos = helper.absolutePos(BlockPos(1, 2, 1))
         player.setPos(pos.x - 120.5, pos.y.toDouble(), pos.z - 120.5)
@@ -277,7 +286,11 @@ class DungeonFailureGameTests : FabricGameTest {
         val origin = DungeonPosition.capture(player)
         repeat(6) { Cobblemon.storage.getParty(player).set(it, PokemonProperties.parse("garchomp level=50").create()) }
         val won = mutableSetOf<UUID>()
-        fun cleanup() { runs.close(); player.discard() }
+        fun cleanup() {
+            runs.close()
+            DungeonSettingsConfig.store.set("leaderboard.pointsByTier.legendary", originalLegendaryPoints.toString())
+            player.discard()
+        }
         fun start() {
             payloads.clear(); won.clear(); player.inventory.clearContent()
             val stack = key(2).apply {
@@ -295,6 +308,11 @@ class DungeonFailureGameTests : FabricGameTest {
             }
             runs.start(player, runs.offer(player, net.minecraft.world.InteractionHand.MAIN_HAND, player.mainHandItem))
             check(runs.active != null)
+            check(runs.recovery.record(player.uuid)?.leaderboardPoints == tierIndex + 1)
+            if (tiers[tierIndex].first == "legendary") {
+                DungeonSettingsConfig.store.set("leaderboard.pointsByTier.legendary", "8")
+                check(runs.recovery.record(player.uuid)?.leaderboardPoints == 4) // Active runs retain their admission-time credit.
+            }
         }
         try { start() } catch (error: Throwable) { cleanup(); throw error }
         fun step() {
@@ -330,7 +348,7 @@ class DungeonFailureGameTests : FabricGameTest {
                         check(player.inventory.getItem(0).count == 1)
                         check((0 until 36).sumOf { if (player.inventory.getItem(it).`is`(Items.DIAMOND)) player.inventory.getItem(it).count else 0 } == 4)
                         val total = rankings.page(0, 8).entries.single().clears
-                        check(total == (tierIndex + 1).toLong())
+                        check(total == expectedTotals[tierIndex])
                         runs.rejoin(player)
                         check(rankings.page(0, 8).entries.single().clears == total)
                         tierIndex++

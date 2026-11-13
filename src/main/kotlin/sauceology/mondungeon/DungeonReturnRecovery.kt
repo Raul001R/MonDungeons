@@ -18,7 +18,7 @@ import java.nio.file.Path
 import java.util.UUID
 
 data class DungeonReturnRecord(val origin: DungeonPosition, val key: ItemStack?, val runId: UUID,
-                               val payoutPokemon: UUID? = null)
+                               val payoutPokemon: UUID? = null, val leaderboardPoints: Int = 1)
 
 /** Durable obligations only. The global run lock is deliberately never restored. */
 class DungeonReturnRecovery internal constructor(private val file: Path, private val registries: HolderLookup.Provider,
@@ -30,9 +30,10 @@ class DungeonReturnRecovery internal constructor(private val file: Path, private
     fun pending(): Map<UUID, DungeonPosition> = records.mapValues { it.value.origin }
     fun record(player: UUID): DungeonReturnRecord? = records[player]?.let { it.copy(key = it.key?.copy()) }
 
-    fun remember(player: UUID, origin: DungeonPosition, key: ItemStack? = null, runId: UUID = UUID.randomUUID()) {
+    fun remember(player: UUID, origin: DungeonPosition, key: ItemStack? = null, runId: UUID = UUID.randomUUID(), leaderboardPoints: Int = 1) {
         check(player !in records) { "Player already has an outstanding dungeon return" }
-        commit(records + (player to DungeonReturnRecord(origin, key?.copyWithCount(1), runId)))
+        require(leaderboardPoints > 0) { "Leaderboard points must be positive" }
+        commit(records + (player to DungeonReturnRecord(origin, key?.copyWithCount(1), runId, leaderboardPoints = leaderboardPoints)))
     }
 
     fun preparePayout(player: UUID, pokemon: UUID?) {
@@ -46,11 +47,12 @@ class DungeonReturnRecovery internal constructor(private val file: Path, private
 
     private fun commit(next: Map<UUID, DungeonReturnRecord>) {
         val data = CompoundTag().apply {
-            putInt("SchemaVersion", 2)
+            putInt("SchemaVersion", 3)
             put("Returns", ListTag().apply {
                 next.forEach { (player, entry) -> add(CompoundTag().apply {
                     putUUID("Player", player)
                     putUUID("Run", entry.runId)
+                    putInt("LeaderboardPoints", entry.leaderboardPoints)
                     putString("Dimension", entry.origin.dimension.location().toString())
                     putDouble("X", entry.origin.position.x); putDouble("Y", entry.origin.position.y); putDouble("Z", entry.origin.position.z)
                     putFloat("Yaw", entry.origin.yaw); putFloat("Pitch", entry.origin.pitch)
@@ -68,7 +70,7 @@ class DungeonReturnRecovery internal constructor(private val file: Path, private
         if (!Files.exists(file)) return emptyMap()
         val root = NbtIo.readCompressed(file, NbtAccounter.unlimitedHeap()).getCompound("data")
         val version = root.getInt("SchemaVersion")
-        require(version in 1..2) { "Unsupported dungeon return schema: $version" }
+        require(version in 1..3) { "Unsupported dungeon return schema: $version" }
         val entries = root.getList("Returns", Tag.TAG_COMPOUND.toInt())
         return buildMap {
             repeat(entries.size) { index ->
@@ -80,9 +82,11 @@ class DungeonReturnRecovery internal constructor(private val file: Path, private
                     origin.yaw.isFinite() && origin.pitch.isFinite()) { "Invalid saved dungeon return" }
                 val key = if (entry.contains("Key")) ItemStack.parse(registries, requireNotNull(entry.get("Key"))).orElseThrow() else null
                 require(key == null || key.`is`(DungeonItems.DUNGEON_KEY) && key.count == 1) { "Invalid saved dungeon key" }
+                val points = if (version >= 3) entry.getInt("LeaderboardPoints") else 1
+                require(points > 0) { "Invalid saved leaderboard points" }
                 val record = DungeonReturnRecord(origin, key,
                     if (entry.hasUUID("Run")) entry.getUUID("Run") else UUID.randomUUID(),
-                    if (entry.hasUUID("PayoutPokemon")) entry.getUUID("PayoutPokemon") else null)
+                    if (entry.hasUUID("PayoutPokemon")) entry.getUUID("PayoutPokemon") else null, points)
                 require(put(entry.getUUID("Player"), record) == null) { "Duplicate dungeon return" }
             }
         }

@@ -21,18 +21,19 @@ class DungeonLeaderboard internal constructor(private val file: Path,
     private var records: Map<UUID, DungeonClearRecord> = load()
     private var ranked = rank(records)
 
-    fun record(player: UUID, name: String, run: UUID) {
+    fun record(player: UUID, name: String, run: UUID, points: Int = 1) {
         val previous = records[player]
         if (previous?.lastRun == run) return
         require(name.isNotBlank() && name.length <= 16) { "Invalid leaderboard player name" }
-        val next = records + (player to DungeonClearRecord(player, name, Math.addExact(previous?.clears ?: 0, 1), run))
+        require(points > 0) { "Leaderboard points must be positive" }
+        val next = records + (player to DungeonClearRecord(player, name, Math.addExact(previous?.clears ?: 0, points.toLong()), run))
         val root = CompoundTag().apply {
             putInt("SchemaVersion", 1)
             put("Players", ListTag().apply {
                 next.values.forEach { entry -> add(CompoundTag().apply {
                     putUUID("Player", entry.player)
                     putString("Name", entry.name)
-                    putLong("Clears", entry.clears)
+                    putLong("Clears", entry.clears) // Retain the field name so historical totals remain readable.
                     putUUID("LastRun", entry.lastRun)
                 }) }
             })

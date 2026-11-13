@@ -81,7 +81,10 @@ Version 1.2.1 settings are grouped in `config/mondungeons/dungeon-settings.json`
     "roundsByTier": { "common": 3, "rare": 5, "epic": 7, "legendary": 10 }
   },
   "trainers": { "regularIvCap": 15, "regularEvMultiplier": 0.5 },
-  "leaderboard": { "pageSize": 8 },
+  "leaderboard": {
+    "pageSize": 8,
+    "pointsByTier": { "common": 1, "rare": 2, "epic": 3, "legendary": 4 }
+  },
   "queue": { "confirmationSeconds": 30 }
 }
 ```
@@ -95,6 +98,7 @@ mondungeons config set runs.roundsByTier.common 3
 mondungeons config set trainers.regularIvCap 15
 mondungeons config set trainers.regularEvMultiplier 0.5
 mondungeons config set leaderboard.pageSize 8
+mondungeons config set leaderboard.pointsByTier.legendary 4
 mondungeons config set queue.confirmationSeconds 30
 mondungeons config reload
 ```
@@ -109,7 +113,9 @@ while a key menu is open, Start asks the player to reopen it to see the new leng
 Round counts must be 1 through the number of templates (10 by default); there
 must be exactly one final boss template. Short runs use the first N-1 regular
 round templates followed by that boss, preserving their levels and formats.
-Custom key tiers need their own `runs.roundsByTier.<id>` entry in the file.
+Custom key tiers need their own `runs.roundsByTier.<id>` and
+`leaderboard.pointsByTier.<id>` entries in the file. Point values must be positive
+whole numbers. Missing options in older settings files inherit bundled defaults.
 
 On first upgrade, existing `regularIvCap` and `regularEvMultiplier` from
 `dungeon-rounds.json` are copied into the new settings file. The old file is
@@ -117,13 +123,19 @@ preserved; future stat changes belong in `dungeon-settings.json`. Detailed round
 roster, move, reward, chest and arena files retain their existing roles and loading
 rules; `config reload` reloads only the new settings file.
 
-The key menu's **Leaderboard** button lists players by successful dungeon clears
-across all tiers, with next/previous pages and a Back button. Clears count only
+The key menu's **Leaderboard** button ranks players by points from successful
+dungeon clears, with next/previous pages and a Back button. Common wins award
+1 point, rare 2, epic 3 and legendary 4 by default, reflecting the different run
+lengths. The GUI labels the total **Points**. Credit counts only
 after reward delivery; failed or abandoned runs add nothing. Totals are saved by
 UUID in the world's `data/mondungeons_leaderboard.dat` and survive restarts. Names
 reflect the most recent credited clear; equal totals sort by name and UUID.
-Payout recovery retries failed credit saves without counting a clear twice.
-Tracking starts with this update; previous versions did not store clear totals.
+Payout recovery retries failed credit saves without awarding points twice. Each
+run's point value is saved at admission and survives config changes/restarts.
+Existing leaderboard totals are preserved because older saves do not contain
+key-tier history; they cannot be retroactively weighted. Pending runs from older
+return-journal formats retain their original one-point credit. Old settings files
+automatically gain the new per-tier point defaults.
 
 Change key odds with a datapack overriding
 `data/mondungeons/loot_table/inject/dungeon_key.json`; its `random_chance` condition

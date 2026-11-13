@@ -12,7 +12,13 @@
     "regularEvMultiplier": 0.5
   },
   "leaderboard": {
-    "pageSize": 8
+    "pageSize": 8,
+    "pointsByTier": {
+      "common": 1,
+      "rare": 2,
+      "epic": 3,
+      "legendary": 4
+    }
   },
   "queue": {
     "confirmationSeconds": 30

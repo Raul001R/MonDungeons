@@ -9,6 +9,7 @@ import kotlin.random.Random
 fun checkDungeonSettings(base: DungeonRoundPlan, roster: DungeonEncounterRoster) {
     val defaults = DungeonSettings.parse(DungeonSettings.defaults())
     check(defaults.roundsByTier == mapOf("common" to 3, "rare" to 5, "epic" to 7, "legendary" to 10))
+    check(defaults.leaderboardPointsByTier == mapOf("common" to 1, "rare" to 2, "epic" to 3, "legendary" to 4))
     defaults.roundsByTier.forEach { (tier, count) ->
         val plan = defaults.plan(tier, base)
         check(plan.rounds.size == count && plan.rounds.last() == base.rounds.last())
@@ -44,6 +45,9 @@ fun checkDungeonSettings(base: DungeonRoundPlan, roster: DungeonEncounterRoster)
     check(store.current.regularIvCap == 12 && store.current.regularEvMultiplier == 0.25)
     check(Files.readString(legacy) == """{"regularIvCap":12,"regularEvMultiplier":0.25}""")
     val frozen = store.current.plan("common", base)
+    val frozenPoints = store.current.leaderboardPoints("legendary")
+    store.set("leaderboard.pointsByTier.legendary", "8")
+    check(store.current.leaderboardPoints("legendary") == 8 && frozenPoints == 4)
     store.set("runs.roundsByTier.common", "4")
     store.set("trainers.regularIvCap", "10")
     check(store.current.plan("common", base).rounds.size == 4 && frozen.rounds.size == 3 && frozen.regularIvCap == 12)
@@ -54,6 +58,8 @@ fun checkDungeonSettings(base: DungeonRoundPlan, roster: DungeonEncounterRoster)
         "runs.roundsByTier.common" to "3.5", "runs.roundsByTier.common" to "\"3\"",
         "trainers.regularIvCap" to "32", "trainers.regularEvMultiplier" to "-0.1",
         "trainers.regularEvMultiplier" to "NaN", "leaderboard.pageSize" to "11",
+        "leaderboard.pointsByTier.legendary" to "0", "leaderboard.pointsByTier.rare" to "-2",
+        "leaderboard.pointsByTier.epic" to "1.5", "leaderboard.pointsByTier.common" to "\"2\"",
         "queue.confirmationSeconds" to "0", "queue.confirmationSeconds" to "1.5",
         "queue.confirmationSeconds" to "107374183", "runs.typo.common" to "3").forEach { (path, value) ->
         check(runCatching { store.set(path, value) }.isFailure) { "$path=$value should fail" }
@@ -66,6 +72,7 @@ fun checkDungeonSettings(base: DungeonRoundPlan, roster: DungeonEncounterRoster)
     Files.writeString(file, """{"trainers":{"regularIvCap":8}}""")
     store.reload()
     check(store.current.regularIvCap == 8 && store.current.roundsByTier == defaults.roundsByTier)
+    check(store.current.leaderboardPointsByTier == defaults.leaderboardPointsByTier)
     val partial = JsonParser.parseString(Files.readString(file)).asJsonObject
     check(partial.has("leaderboard") && partial.getAsJsonObject("trainers").has("regularEvMultiplier"))
     partial.getAsJsonObject("trainers").addProperty("typo", 1)

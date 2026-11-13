@@ -1,6 +1,42 @@
 # Agent memory
 
+## Tier-weighted leaderboard credit in 1.2.1 (2026-11-13, validated)
+- User requested adding weighted leaderboard wins to the just-pushed update:
+  common1, rare2, epic3, legendary4 because run lengths differ. Keep1.2.1,
+  implement/test then commit and push the same feature/1.2.0-multi-arenas branch.
+- Added leaderboard.pointsByTier to grouped settings, positive integer validation
+  and console get/set/reload. Older settings inherit1/2/3/4. Custom run tiers
+  require a corresponding points entry. GUI total label is Points with a
+  key-weighted-clears note; packet/NBT total field names remain compatible.
+- Capture configured points in the durable return journal before teleport.
+  Journal schema3 stores LeaderboardPoints; schemas1/2 default to original1.
+  Paid receipt recovery uses this frozen value, including config edits/restarts
+  and failed leaderboard writes. Deduplication is still per paid run UUID.
+  Existing accumulated totals are preserved; no stored tier history exists
+  to recalculate past wins. No retroactive multiplier or reset.
+- Expanded existing tests for all four real tier runs (cumulative1/3/6/10),
+  mid-legendary config change without changing its4-point credit, journal reload
+  and legacy migration, failed credit retry/dedup, mixed-weight rankings, invalid
+  values and old-settings upgrade. All18 required Minecraft tests PASS
+  (1.598min) and dependency-free admission/FIFO/settings/roster checks PASS.
+  Log build/1.2.1-weighted-leaderboard-final.log; test server is still saving its
+  world before Gradle exits. Packaged1.2.1 metadata, pointsByTier1/2/3/4 and
+  Points label verified. No UI layout change; label text only.
+- Initial build waited on a stalled Kotlin compiler daemon. Stopped only this
+  build's Gradle PID32488 and reran with quoted PowerShell argument
+  '-Pkotlin.compiler.execution.strategy=in-process' --no-daemon --offline
+  -PrctCompat=true. Do not pass that dotted -P argument unquoted in PowerShell:
+  it was parsed as a kotlin project property, breaking kotlin.target lookup.
+  The retry compiled/tests passed; this machine's server loading was very slow.
+  Ready to commit/push this addition without bumping1.2.1 again.
+
 ## Publish version 1.2.1 (2026-11-13)
+- Pushed commit ababb4e7f3d55d48c48a38ad27f85cd525d4e859 to
+  origin/feature/1.2.0-multi-arenas with upstream tracking. All31 reviewed
+  source/resource/test/doc files included; working tree clean after push.
+  GitHub Actions run43373394499 verified SUCCESS for that exact SHA:
+  https://github.com/Raul001R/MonDungeons/actions/runs/43373394499 .
+  Main untouched. This post-push outcome is a local handoff note only.
 - User explicitly requested updating the version number and pushing to Git.
   Bump1.2.0 to1.2.1, update current README/artifact references, build and verify
   packaged metadata. Commit all completed multiple-arena/queue, weighted common
